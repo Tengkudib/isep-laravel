@@ -261,6 +261,10 @@ function startAiGame(diff) {
     enterGamePanel();
     renderBoard();
     updateStatus();
+    // Daftar perlawanan di pelayan sejak mula supaya tempoh permainan boleh disahkan untuk XP
+    apiPost('create', { game_type: 'chess', mode: 'ai', ai_difficulty: diff }).then(res => {
+        if (res.match && !gameOver) matchId = res.match.match_id;
+    });
 }
 
 function createPvpMatch() {

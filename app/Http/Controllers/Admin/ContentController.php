@@ -22,6 +22,22 @@ class ContentController extends Controller
         );
     }
 
+    /**
+     * Admin boleh urus semua bahasa; lecturer hanya bahasa yang ditugaskan kepadanya (language_lecturers).
+     */
+    private function authorizeLanguage(Request $request, int $languageId): void
+    {
+        $user = $request->user();
+        if ($user->role === 'admin') {
+            return;
+        }
+        abort_unless(
+            DB::table('language_lecturers')->where('language_id', $languageId)->where('lecturer_id', $user->id)->exists(),
+            403,
+            t('Anda tidak ditugaskan untuk subjek ini.', 'You are not assigned to this subject.')
+        );
+    }
+
     // ------------------------------------------------------------------
     // Senarai bab bagi satu bahasa
     // ------------------------------------------------------------------
@@ -30,6 +46,7 @@ class ContentController extends Controller
     {
         $language = row(DB::table('languages')->where('id', $languageId));
         abort_unless($language, 404, t('Bahasa tidak dijumpai.', 'Language not found.'));
+        $this->authorizeLanguage($request, $languageId);
 
         $isAdmin = $request->user()->role === 'admin';
 
@@ -46,6 +63,7 @@ class ContentController extends Controller
     public function chaptersAction(Request $request, int $languageId)
     {
         abort_unless(DB::table('languages')->where('id', $languageId)->exists(), 404, t('Bahasa tidak dijumpai.', 'Language not found.'));
+        $this->authorizeLanguage($request, $languageId);
 
         if ($request->has('add_chapter')) {
             $chapterNumber = (int) $request->input('chapter_number');
@@ -72,7 +90,7 @@ class ContentController extends Controller
         }
 
         if ($request->has('delete_chapter')) {
-            DB::table('chapters')->where('id', (int) $request->input('id'))->delete();
+            DB::table('chapters')->where('id', (int) $request->input('id'))->where('language_id', $languageId)->delete();
             $this->syncTotalChapters($languageId);
 
             return back()->with('success', t('Bab dipadam.', 'Chapter deleted.'));
@@ -85,18 +103,19 @@ class ContentController extends Controller
     // Kandungan satu bab
     // ------------------------------------------------------------------
 
-    private function findChapter(int $chapterId): array
+    private function findChapter(Request $request, int $chapterId): array
     {
         $chapter = row(DB::table('chapters as c')->join('languages as l', 'l.id', '=', 'c.language_id')
             ->select('c.*', 'l.name as lang_name')->where('c.id', $chapterId));
         abort_unless($chapter, 404, t('Bab tidak dijumpai.', 'Chapter not found.'));
+        $this->authorizeLanguage($request, (int) $chapter['language_id']);
 
         return $chapter;
     }
 
-    public function content(int $chapterId)
+    public function content(Request $request, int $chapterId)
     {
-        $chapter = $this->findChapter($chapterId);
+        $chapter = $this->findChapter($request, $chapterId);
 
         return view('admin.chapter_content', [
             'chapter' => $chapter,
@@ -110,7 +129,7 @@ class ContentController extends Controller
 
     public function contentAction(Request $request, int $chapterId)
     {
-        $this->findChapter($chapterId);
+        $this->findChapter($request, $chapterId);
         $in = fn (string $k) => trim((string) $request->input($k, ''));
 
         // --- Nota / Tip / Kesilapan Biasa (dengan lampiran fail pilihan) ---
@@ -273,7 +292,7 @@ class ContentController extends Controller
         // --- Padam ---
         foreach (['content' => 'learning_content', 'exercise' => 'exercises', 'quiz' => 'quizzes'] as $key => $table) {
             if ($request->has('delete_'.$key)) {
-                DB::table($table)->where('id', (int) $request->input('id'))->delete();
+                DB::table($table)->where('id', (int) $request->input('id'))->where('chapter_id', $chapterId)->delete();
 
                 return back()->with('success', t('Item dipadam.', 'Item deleted.'));
             }

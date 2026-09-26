@@ -32,16 +32,6 @@
             box-shadow: 0 6px 18px rgba(11,37,69,0.25);
         }
         .brand-logo img { width: 100%; height: 100%; object-fit: cover; }
-        .form-control {
-            border-radius: 10px; border: 1px solid rgba(255,255,255,0.6);
-            background: rgba(255,255,255,0.7); padding: 11px 15px;
-        }
-        .form-control:focus { background: rgba(255,255,255,0.9); border-color: #D4AF37; box-shadow: 0 0 0 3px rgba(212,175,55,0.2); }
-        .btn-reset {
-            background: linear-gradient(135deg, #D4AF37, #B8941F); border: none; border-radius: 10px;
-            padding: 13px; font-weight: 700; color: #0B2545; transition: all 0.2s ease; width: 100%;
-        }
-        .btn-reset:hover { opacity: 0.95; color: #0B2545; transform: translateY(-2px); box-shadow: 0 10px 24px rgba(212,175,55,0.4); }
         .back-to-login { color: #0B2545; font-weight: 600; text-decoration: none; font-size: 0.88rem; }
         .back-to-login:hover { color: #13315C; }
     </style>
@@ -55,39 +45,12 @@
         <div class="text-center mb-4">
             <div class="brand-logo"><img src="{{ asset('assets/img/iSEP.png') }}" alt="iSEP"></div>
             <h4 class="fw-bold mb-0">{{ t('Tetapkan Semula Kata Laluan', 'Reset Password') }}</h4>
-            <small class="text-muted">{{ t('Sahkan identiti anda untuk tetapkan kata laluan baharu.', 'Verify your identity to set a new password.') }}</small>
+            <small class="text-muted">{{ t('Lupa kata laluan? Kami akan bantu anda.', 'Forgot your password? We can help.') }}</small>
         </div>
 
-        @if (session('error'))
-        <div class="alert alert-danger border-0 small"><i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}</div>
-        @endif
-        @if (session('success'))
-        <div class="alert alert-success border-0 small"><i class="fas fa-check-circle me-2"></i>{{ session('success') }}</div>
-        <div class="text-center mt-3"><a href="{{ route('login') }}" class="back-to-login"><i class="fas fa-arrow-left me-1"></i> {{ t('Kembali ke Log Masuk', 'Back to Login') }}</a></div>
-        @else
-
-        <form method="POST" action="{{ route('password.reset') }}">
-            @csrf
-            <div class="mb-3">
-                <label class="form-label fw-semibold small">{{ t('Username', 'Username') }}</label>
-                <input type="text" name="username" class="form-control text-uppercase" required value="{{ old('username') }}">
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-semibold small">{{ t('Emel Berdaftar', 'Registered Email') }}</label>
-                <input type="email" name="email" class="form-control" required value="{{ old('email') }}">
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-semibold small">{{ t('Kata Laluan Baharu', 'New Password') }}</label>
-                <input type="password" name="new_password" class="form-control" required>
-                <small class="text-muted">{{ t('Sekurang-kurangnya 6 aksara.', 'At least 6 characters.') }}</small>
-            </div>
-            <div class="mb-4">
-                <label class="form-label fw-semibold small">{{ t('Sahkan Kata Laluan Baharu', 'Confirm New Password') }}</label>
-                <input type="password" name="confirm_password" class="form-control" required>
-            </div>
-            <button type="submit" class="btn btn-reset"><i class="fas fa-key me-2"></i>{{ t('Tetapkan Semula', 'Reset Password') }}</button>
-        </form>
-        <div class="text-center mt-3"><a href="{{ route('login') }}" class="back-to-login"><i class="fas fa-arrow-left me-1"></i> {{ t('Kembali ke Log Masuk', 'Back to Login') }}</a></div>
-        @endif
+        <div class="alert alert-info border-0 small mb-0">
+            <i class="fas fa-user-shield me-2"></i>{{ t('Untuk keselamatan akaun, kata laluan hanya boleh ditetapkan semula oleh pentadbir sistem. Sila hubungi admin atau pensyarah anda dengan username anda, dan mereka akan berikan kata laluan sementara.', 'For account security, passwords can only be reset by the system administrator. Please contact the admin or your lecturer with your username, and they will give you a temporary password.') }}
+        </div>
+        <div class="text-center mt-4"><a href="{{ route('login') }}" class="back-to-login"><i class="fas fa-arrow-left me-1"></i> {{ t('Kembali ke Log Masuk', 'Back to Login') }}</a></div>
     </div>
 @endsection

@@ -18,6 +18,12 @@ class GameController extends Controller
 {
     private const AI_XP = ['easy' => 15, 'medium' => 30, 'hard' => 50];
 
+    // Tempoh minimum (saat) perlawanan vs komputer sebelum kemenangan layak XP
+    private const AI_MIN_SECONDS = 60;
+
+    // Bilangan kemenangan vs komputer yang diberi XP setiap hari
+    private const AI_XP_WINS_PER_DAY = 5;
+
     private const CHESS_START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
     public function __construct(private LearningService $learning)
@@ -284,7 +290,14 @@ class GameController extends Controller
                 $celebrationColors = null;
                 // XP hanya untuk kemenangan melawan KOMPUTER. Tiada XP untuk PvP.
                 if ($m['mode'] === 'ai' && $winner === 'player1') {
-                    if (! $m['xp_awarded']) {
+                    // Permainan vs komputer berjalan di pelayar, jadi pelayan tidak nampak langkahnya.
+                    // Halang "menang" palsu: perlawanan mesti berlangsung cukup lama, dan XP dihadkan setiap hari.
+                    $elapsed = (int) DB::table('game_matches')->where('id', $matchId)->value(DB::raw('TIMESTAMPDIFF(SECOND, created_at, NOW())'));
+                    $xpWinsToday = DB::table('game_matches')->where('player1_id', $studentId)->where('mode', 'ai')
+                        ->where('xp_awarded', 1)->whereRaw('DATE(created_at) = CURDATE()')->count();
+                    $eligible = $elapsed >= self::AI_MIN_SECONDS && $xpWinsToday < self::AI_XP_WINS_PER_DAY;
+
+                    if (! $m['xp_awarded'] && $eligible) {
                         $difficulty = $m['ai_difficulty'] ?: 'easy';
                         $xp = self::AI_XP[$difficulty] ?? 15;
                         $gameLabel = $m['game_type'] === 'chess' ? 'Chess' : 'Dam Haji';
@@ -293,6 +306,8 @@ class GameController extends Controller
 
                         DB::table('game_matches')->where('id', $matchId)->update(['xp_awarded' => 1]);
                         $xpMessage = "+$xp XP!";
+                    } elseif (! $m['xp_awarded'] && $xpWinsToday >= self::AI_XP_WINS_PER_DAY) {
+                        $xpMessage = t('(Had XP permainan hari ini telah dicapai.)', '(Today\'s game XP limit has been reached.)');
                     }
 
                     $freshUser = row(DB::table('users')->where('id', $studentId));

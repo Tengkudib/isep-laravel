@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Throwable;
 
 /**
@@ -31,6 +32,18 @@ class ChatbotController extends Controller
         if (mb_strlen($message) > 1500) {
             return response()->json(['error' => t('Soalan terlalu panjang. Ringkaskan sedikit.', 'Your question is too long. Please shorten it.')]);
         }
+
+        // Had penggunaan setiap pelajar supaya kuota Gemini tidak dihabiskan oleh seorang pelajar
+        foreach ([
+            ['chatbot-min|'.$studentId, 10, 60, t('Terlalu banyak soalan dalam masa singkat. Tunggu %d saat dan cuba lagi.', 'Too many questions in a short time. Wait %d seconds and try again.')],
+            ['chatbot-day|'.$studentId, 100, 86400, t('Had harian chatbot (100 soalan) telah dicapai. Cuba lagi esok.', 'Daily chatbot limit (100 questions) reached. Please try again tomorrow.')],
+        ] as [$key, $max, $decay, $msg]) {
+            if (RateLimiter::tooManyAttempts($key, $max)) {
+                return response()->json(['error' => sprintf($msg, RateLimiter::availableIn($key))], 429);
+            }
+        }
+        RateLimiter::hit('chatbot-min|'.$studentId, 60);
+        RateLimiter::hit('chatbot-day|'.$studentId, 86400);
 
         $apiKey = (string) config('services.gemini.key');
         if ($apiKey === '') {

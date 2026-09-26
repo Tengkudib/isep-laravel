@@ -188,5 +188,12 @@ function syncUsername() {
     if (usernameTouched) return;
     document.getElementById('usernameInput').value = document.getElementById('nameInput').value.toUpperCase();
 }
+function isepAskNewPassword(form) {
+    var pw = prompt({!! json_encode(t('Masukkan kata laluan sementara baharu (sekurang-kurangnya 6 aksara):', 'Enter a new temporary password (at least 6 characters):')) !!});
+    if (pw === null) return false;
+    if (pw.length < 6) { alert({!! json_encode(t('Kata laluan mesti sekurang-kurangnya 6 aksara.', 'Password must be at least 6 characters.')) !!}); return false; }
+    form.querySelector('input[name=new_password]').value = pw;
+    return true;
+}
 </script>
 @endsection

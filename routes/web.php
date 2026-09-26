@@ -32,7 +32,6 @@ Route::middleware('guest')->group(function () {
 
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/reset-password', [AuthController::class, 'showReset'])->name('password.reset');
-Route::post('/reset-password', [AuthController::class, 'reset']);
 
 // ---------- Pelajar ----------
 Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')->group(function () {

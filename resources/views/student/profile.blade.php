@@ -92,7 +92,7 @@
                         <label class="form-label small fw-semibold">{{ t('Emel', 'Email') }}</label>
                         <input type="email" name="email" class="form-control {!! $error_field === 'email' ? 'is-invalid' : '' !!}" value="{{ $user['email'] ?? '' }}" placeholder="{{ t('Masukkan emel anda', 'Enter your email') }}">
                         @if ($error_field === 'email')<span class="isep-field-error-msg"><i class="fas fa-circle-exclamation"></i> {{ $error }}</span>
-                        @else<span class="isep-field-hint">{{ t('Pilihan. Digunakan untuk tetapan semula kata laluan.', 'Optional. Used for password reset.') }}</span>@endif
+                        @else<span class="isep-field-hint">{{ t('Pilihan. Digunakan oleh admin untuk menghubungi anda.', 'Optional. Used by the admin to contact you.') }}</span>@endif
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
