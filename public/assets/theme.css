@@ -1,0 +1,453 @@
+/* ============================================================
+   iSEP - Elegant Modern Theme
+   Navy (header/nav/text) · Gold (butang utama/CTA/progress)
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --isep-primary: #13315C;      /* Navy Sederhana - header & navigasi */
+    --isep-primary-dark: #0B2545; /* Navy Deep */
+    --isep-secondary: #D4AF37;    /* Kuning Emas - butang utama & progress */
+    --isep-secondary-dark: #B8941F; /* Emas Gelap */
+    --isep-accent: #D4AF37;       /* Emas - CTA penting */
+    --isep-accent-alt: #B8941F;   /* Emas Gelap - CTA alternatif */
+    --isep-bg: #FAF7F0;           /* Cream/Ivory */
+    --isep-bg-teal: #F3EFE4;      /* Latar belakang cream sederhana (seksyen berselang) */
+    --isep-text: #0B2545;         /* Navy Gelap */
+    --isep-card-bg: #FFFFFF;
+    --isep-border: #e9e4d8;
+    --isep-text-muted: #6B7A8F;   /* Grey Kebiruan - SATU-SATUNYA warna untuk teks kurang penting */
+    --isep-text-faint: #9BAAC0;   /* Lagi senyap - placeholder, caption tersier */
+    --isep-font: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+
+    /* ---- Skala radius (SATU sistem, 4 nilai sahaja - jangan campur nilai lain) ---- */
+    --isep-r-sm: 4px;   /* badge, tag, elemen kecil */
+    --isep-r-md: 8px;   /* input, butang kecil, item senarai */
+    --isep-r-lg: 12px;  /* butang, kad kecil-sederhana */
+    --isep-r-xl: 16px;  /* kad utama, modal, panel besar */
+
+    /* ---- Skala jarak (asas 4px) ---- */
+    --isep-sp-1: 4px;
+    --isep-sp-2: 8px;
+    --isep-sp-3: 12px;
+    --isep-sp-4: 16px;
+    --isep-sp-5: 24px;
+    --isep-sp-6: 32px;
+    --isep-sp-7: 48px;
+    --isep-sp-8: 64px;
+
+    /* ---- Skala tipografi (hierarki jelas) ---- */
+    --isep-fs-xs: 0.75rem;    /* 12px - caption/label kecil */
+    --isep-fs-sm: 0.875rem;   /* 14px - teks sekunder */
+    --isep-fs-base: 1rem;     /* 16px - body */
+    --isep-fs-lg: 1.125rem;   /* 18px - lead text */
+    --isep-fs-xl: 1.5rem;     /* 24px - h4/h5 */
+    --isep-fs-2xl: 2rem;      /* 32px - h2/h3 */
+    --isep-fs-3xl: 2.75rem;   /* 44px - h1/hero */
+
+    /* ---- Gerakan (motion) ---- */
+    --isep-ease: cubic-bezier(.4, 0, .2, 1);
+    --isep-ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+    --isep-duration: 240ms;
+
+    /* ---- Sistem bayang berlapis (ambient + direct light, macam Stripe/Linear) ---- */
+    --isep-shadow-xs: 0 1px 2px rgba(23,23,35,0.05);
+    --isep-shadow-sm: 0 1px 2px rgba(23,23,35,0.04), 0 3px 6px rgba(23,23,35,0.05);
+    --isep-shadow-md: 0 2px 4px rgba(23,23,35,0.03), 0 8px 16px rgba(23,23,35,0.06), 0 1px 0 rgba(11,37,69,0.03);
+    --isep-shadow-lg: 0 4px 8px rgba(23,23,35,0.04), 0 16px 32px rgba(23,23,35,0.09), 0 32px 64px -12px rgba(11,37,69,0.14);
+    --isep-shadow-xl: 0 8px 16px rgba(23,23,35,0.05), 0 24px 48px rgba(23,23,35,0.12), 0 48px 96px -16px rgba(11,37,69,0.18);
+    --isep-radius: 18px; /* nilai lama, kekal untuk keserasian ke belakang */
+
+    /* Override Bootstrap 5.3 CSS variables supaya semua utility class ikut tema */
+    --bs-primary: #13315C;
+    --bs-primary-rgb: 19, 49, 92;
+    --bs-body-color: #0B2545;
+    --bs-body-bg: #FAF7F0;
+    --bs-link-color: #13315C;
+    --bs-link-hover-color: #0B2545;
+}
+
+/* Dark mode: bayang berasaskan hitam (bukan ungu) supaya kelihatan betul atas latar gelap,
+   dan lebih legap kerana kontra terhadap latar gelap secara semula jadi lebih rendah */
+[data-theme="dark"] {
+    --isep-text-faint: #6b7280;
+    --isep-shadow-xs: 0 1px 2px rgba(0,0,0,0.35);
+    --isep-shadow-sm: 0 1px 3px rgba(0,0,0,0.35), 0 3px 6px rgba(0,0,0,0.25);
+    --isep-shadow-md: 0 2px 6px rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.3);
+    --isep-shadow-lg: 0 4px 12px rgba(0,0,0,0.4), 0 20px 40px rgba(0,0,0,0.35);
+    --isep-shadow-xl: 0 8px 20px rgba(0,0,0,0.45), 0 32px 64px rgba(0,0,0,0.4);
+}
+
+/* ---------- Tipografi & asas visual ---------- */
+html { scroll-behavior: smooth; }
+body, .btn, .form-control, .form-select, input, textarea, select {
+    font-family: var(--isep-font) !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+h1, h2, h3, h4, h5, h6 { font-family: var(--isep-font) !important; letter-spacing: -0.01em; }
+
+/* Skru bebola tetikus tersuai mengikut jenama */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--isep-bg); }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--isep-primary), var(--isep-secondary)); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--isep-primary-dark); }
+
+/* Fokus yang jelas & mesra kebolehcapaian, sepadan warna jenama */
+a:focus-visible, button:focus-visible, .btn:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: 2px solid var(--isep-secondary);
+    outline-offset: 2px;
+}
+
+/* Peralihan lembut sejagat untuk rasa "hidup" tanpa terlalu mencolok - 240ms, easing bukan linear */
+a, .btn, .card-modern, .lang-card, .game-card, .mode-btn, .cert-card, .stat-card,
+.roadmap-item, .lobby-row, .hex-node, .cat-tab, .theme-toggle-btn,
+.form-control, .form-select, .badge, input[type="checkbox"], input[type="radio"],
+.feature-card, .course-card {
+    transition: transform var(--isep-duration) var(--isep-ease),
+                box-shadow var(--isep-duration) var(--isep-ease),
+                background var(--isep-duration) var(--isep-ease),
+                color var(--isep-duration) var(--isep-ease),
+                border-color var(--isep-duration) var(--isep-ease),
+                opacity var(--isep-duration) var(--isep-ease);
+}
+
+/* Animasi masuk yang halus untuk kad - dimatikan untuk pengguna yang minta kurang gerakan */
+@keyframes isepFadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: no-preference) {
+    .card-modern, .lang-card, .game-card, .cert-card, .feature-card, .course-card { animation: isepFadeInUp 0.45s var(--isep-ease) both; }
+}
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* ---------- DARK MODE ---------- */
+[data-theme="dark"] {
+    --isep-bg: #0f1117;
+    --isep-bg-teal: #131a1f;
+    --isep-text: #E5E7EB;
+    --isep-card-bg: #1a1d27;
+    --isep-border: #2a2e3a;
+    --isep-text-muted: #9CA3AF;
+    --bs-body-color: #E5E7EB;
+    --bs-body-bg: #0f1117;
+}
+
+[data-theme="dark"] .card-modern,
+[data-theme="dark"] .card-header-custom + .card-body {
+    background: var(--isep-card-bg) !important;
+    color: var(--isep-text) !important;
+}
+[data-theme="dark"] .table { color: var(--isep-text) !important; }
+[data-theme="dark"] .table tbody tr:hover { background-color: #22262f !important; }
+[data-theme="dark"] .form-control, [data-theme="dark"] .form-select {
+    background: #22262f !important; color: var(--isep-text) !important; border-color: var(--isep-border) !important;
+}
+[data-theme="dark"] .form-control::placeholder { color: #6b7280 !important; }
+[data-theme="dark"] .text-muted { color: var(--isep-text-muted) !important; }
+[data-theme="dark"] .border, [data-theme="dark"] .border-bottom { border-color: var(--isep-border) !important; }
+[data-theme="dark"] a:not(.btn):not([class*="nav"]):not([class*="brand"]) { color: #D4AF37; }
+[data-theme="dark"] .bg-light { background-color: #22262f !important; color: var(--isep-text) !important; }
+[data-theme="dark"] .badge.bg-light { background-color: #2a2e3a !important; color: #d1d5db !important; }
+
+.theme-toggle-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: rgba(255,255,255,0.12); color: white; border: none; border-radius: 10px;
+    padding: 10px 14px; font-size: 0.85rem; cursor: pointer; width: 100%; margin-top: 8px;
+}
+.theme-toggle-btn:hover { background: rgba(255,255,255,0.2); }
+
+
+body {
+    background: var(--isep-bg) !important;
+    color: var(--isep-text) !important;
+}
+
+/* ---------- Header / Navigasi (Ungu) ---------- */
+.isep-navbar {
+    background: var(--isep-primary-dark) !important;
+}
+.isep-navbar .links a.active {
+    background: rgba(255,255,255,0.22) !important;
+}
+
+.topbar {
+    background: linear-gradient(135deg, var(--isep-primary-dark) 0%, var(--isep-primary) 70%, var(--isep-secondary) 100%) !important;
+}
+
+/* ---------- Butang Utama (Navy) & Progress (Emas) ---------- */
+/* Nota kontras: emas terlalu terang untuk teks putih (gagal WCAG AA) - emas dikhaskan
+   untuk butang CTA istimewa (lihat bawah) dengan teks navy gelap, bukan butang biasa. */
+.btn-primary {
+    background: var(--isep-primary) !important;
+    border-color: var(--isep-primary) !important;
+    color: white !important;
+}
+.btn-primary:hover, .btn-primary:focus {
+    background: var(--isep-primary-dark) !important;
+    border-color: var(--isep-primary-dark) !important;
+}
+.btn-outline-primary {
+    color: var(--isep-primary) !important;
+    border-color: var(--isep-primary) !important;
+}
+.btn-outline-primary:hover {
+    background: var(--isep-primary) !important;
+    border-color: var(--isep-primary) !important;
+    color: white !important;
+}
+
+.progress-bar {
+    background-color: var(--isep-secondary) !important;
+}
+.progress-bar.bg-primary {
+    background-color: var(--isep-secondary) !important;
+}
+
+.text-primary { color: var(--isep-primary) !important; }
+.bg-primary { background-color: var(--isep-primary) !important; }
+.border-primary { border-color: var(--isep-primary) !important; }
+
+/* ---------- CTA Penting (Emas) - butang istimewa, guna teks navy sebab latar terang ---------- */
+.btn-cta, .btn-login, .btn-enroll, .btn-accent {
+    background: linear-gradient(135deg, var(--isep-accent) 0%, var(--isep-accent-alt) 100%) !important;
+    border: none !important;
+    color: var(--isep-primary-dark) !important;
+    font-weight: 700 !important;
+}
+.btn-cta:hover, .btn-login:hover, .btn-enroll:hover, .btn-accent:hover {
+    opacity: 0.92;
+    color: var(--isep-primary-dark) !important;
+}
+
+/* ---------- Kad "Teruskan Belajar" - ikut warna tema pelajar (primary/secondary) ---------- */
+/* Emas hanya sebagai kilauan di penjuru (bukan 50/50) supaya teks putih kekal mudah dibaca */
+.continue-card {
+    background: linear-gradient(135deg, var(--isep-primary-dark) 0%, var(--isep-primary) 75%, var(--isep-secondary) 100%) !important;
+    border: none !important;
+    color: white !important;
+}
+/* Bar progress mesti putih supaya sentiasa kontra dengan latar kad, walau apa jua warna tema */
+.continue-card .progress { background-color: rgba(255,255,255,0.28) !important; }
+.continue-card .progress-bar { background-color: #ffffff !important; }
+
+/* ---------- Kad & elemen umum ---------- */
+.card-modern, .card-header-custom {
+    box-shadow: var(--isep-shadow-md) !important;
+    background: var(--isep-card-bg);
+    color: var(--isep-text);
+    border: 1px solid rgba(11,37,69,0.06);
+    border-radius: var(--isep-r-xl) !important;
+}
+[data-theme="dark"] .card-modern, [data-theme="dark"] .card-header-custom {
+    border-color: rgba(255,255,255,0.06);
+}
+.card-modern:hover {
+    box-shadow: var(--isep-shadow-lg) !important;
+    transform: translateY(-2px);
+}
+
+/* Kepala jadual ikut warna jenama (gantikan biru Bootstrap lalai) */
+.table thead {
+    background: linear-gradient(135deg, var(--isep-primary-dark), var(--isep-primary)) !important;
+    color: white !important;
+}
+.table { border-radius: var(--isep-r-lg); overflow: hidden; }
+.table tbody tr:hover { background: var(--isep-bg-teal); }
+
+/* Bayang topbar sedikit lebih berlapis untuk kesan lebih premium */
+.topbar { box-shadow: var(--isep-shadow-lg) !important; }
+.isep-navbar { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+
+/* Butang - sudut lebih lembut & mikro-interaksi */
+.btn { border-radius: var(--isep-r-lg) !important; font-weight: 600; }
+.btn:active { transform: scale(0.97); }
+.btn-primary:hover, .btn-cta:hover, .btn-login:hover, .btn-enroll:hover, .btn-accent:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--isep-shadow-md);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--isep-primary) !important;
+    border-bottom-color: var(--isep-secondary) !important;
+    border-bottom-width: 3px !important;
+}
+
+.info-box.tip {
+    background: var(--isep-bg-teal) !important;
+    border-left-color: var(--isep-secondary) !important;
+}
+
+[data-theme="dark"] .info-box.common_error {
+    background: rgba(255, 193, 7, 0.15) !important;
+}
+
+.file-preview-box {
+    background: var(--isep-bg) !important;
+    border-color: var(--isep-border) !important;
+}
+
+.pledge-box {
+    border-left-color: var(--isep-primary) !important;
+    background: var(--isep-bg) !important;
+}
+
+.cert-frame {
+    border-color: var(--isep-primary) !important;
+}
+.cert-frame::before {
+    border-color: var(--isep-secondary) !important;
+}
+.cert-name {
+    color: var(--isep-primary) !important;
+}
+
+.bar-fill {
+    background: linear-gradient(90deg, var(--isep-primary), var(--isep-secondary)) !important;
+}
+
+.role-badge.student { background: rgba(19,49,92,0.13) !important; color: var(--isep-primary-dark) !important; }
+.role-badge.lecturer { background: rgba(107,122,143,0.16) !important; color: #4A5A70 !important; }
+.role-badge.admin { background: rgba(212,175,55,0.22) !important; color: #8a6d1a !important; }
+
+/* ============================================================
+   Komponen boleh guna semula - empty states, skeleton, spinner
+   ============================================================ */
+
+/* ---- Empty state: mesra & bermaklumat, bukan sekadar "Tiada data" ---- */
+.isep-empty {
+    text-align: center;
+    padding: var(--isep-sp-7) var(--isep-sp-5);
+    color: var(--isep-text-muted);
+}
+.isep-empty-icon {
+    width: 68px; height: 68px; margin: 0 auto var(--isep-sp-4);
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--isep-bg-teal), var(--isep-bg));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.8rem; color: var(--isep-secondary);
+    box-shadow: inset 0 0 0 1px rgba(212,175,55,0.18);
+}
+.isep-empty-title {
+    font-weight: 700; color: var(--isep-text); margin-bottom: 4px;
+    font-size: var(--isep-fs-lg);
+}
+.isep-empty-sub {
+    font-size: var(--isep-fs-sm);
+    max-width: 340px;
+    margin: 0 auto;
+    line-height: 1.5;
+}
+
+/* ---- Skeleton loader: guna semasa data sedang diambil (fetch) ---- */
+.isep-skeleton {
+    display: block;
+    background: linear-gradient(90deg, var(--isep-border) 25%, rgba(255,255,255,0.6) 50%, var(--isep-border) 75%);
+    background-size: 200% 100%;
+    animation: isepSkeletonShimmer 1.4s ease infinite;
+    border-radius: var(--isep-r-md);
+}
+[data-theme="dark"] .isep-skeleton {
+    background: linear-gradient(90deg, #22262f 25%, #2f3542 50%, #22262f 75%);
+    background-size: 200% 100%;
+}
+@keyframes isepSkeletonShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.isep-skeleton-text { height: 14px; margin-bottom: 8px; width: 100%; }
+.isep-skeleton-text.short { width: 55%; }
+.isep-skeleton-title { height: 20px; width: 45%; margin-bottom: 12px; }
+.isep-skeleton-avatar { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; }
+.isep-skeleton-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+
+/* ---- Spinner jenama (gantikan spinner Bootstrap generik) ---- */
+.isep-spinner {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 3px solid var(--isep-border);
+    border-top-color: var(--isep-primary);
+    border-right-color: var(--isep-secondary);
+    animation: isepSpin 0.7s linear infinite;
+    margin: 0 auto;
+}
+.isep-spinner.sm { width: 22px; height: 22px; border-width: 2.5px; }
+@keyframes isepSpin { to { transform: rotate(360deg); } }
+
+/* ---- Mesej alert - dilembutkan, tidak lagi merah/hijau kasar ---- */
+.alert-danger {
+    background: rgba(255,107,107,0.08) !important;
+    color: #c0392b !important;
+    border: 1px solid rgba(255,107,107,0.25) !important;
+}
+.alert-success {
+    background: rgba(40,167,69,0.08) !important;
+    color: #1e7e34 !important;
+    border: 1px solid rgba(40,167,69,0.25) !important;
+}
+.alert-warning {
+    background: rgba(212,175,55,0.14) !important;
+    color: #8a6d1a !important;
+    border: 1px solid rgba(212,175,55,0.35) !important;
+}
+[data-theme="dark"] .alert-danger { background: rgba(255,107,107,0.12) !important; color: #ff9b9b !important; border-color: rgba(255,107,107,0.25) !important; }
+[data-theme="dark"] .alert-success { background: rgba(40,167,69,0.16) !important; color: #7ee2a8 !important; border-color: rgba(40,167,69,0.3) !important; }
+[data-theme="dark"] .alert-warning { background: rgba(212,175,55,0.12) !important; color: #E8C766 !important; border-color: rgba(212,175,55,0.3) !important; }
+
+/* ---- Pengesahan borang (validation) yang halus, bukan garis merah kasar sahaja ---- */
+/* Nota: guna merah/hijau literal (bukan var(--isep-accent)/var(--isep-secondary)) sebab
+   status ralat/sah mesti kekal merah/hijau walau apa jua warna jenama semasa */
+.is-invalid, .form-control.isep-field-error {
+    border-color: #FF6B6B !important;
+    background: rgba(255,107,107,0.04) !important;
+    box-shadow: none !important;
+}
+.is-invalid:focus, .form-control.isep-field-error:focus {
+    box-shadow: 0 0 0 3px rgba(255,107,107,0.15) !important;
+}
+.isep-field-error-msg {
+    color: #c0392b; font-size: var(--isep-fs-xs); margin-top: 6px;
+    display: flex; align-items: center; gap: 6px;
+}
+[data-theme="dark"] .isep-field-error-msg { color: #ff9b9b; }
+.is-valid, .form-control.isep-field-success {
+    border-color: #28a745 !important;
+    background: rgba(40,167,69,0.04) !important;
+    box-shadow: none !important;
+}
+.is-valid:focus, .form-control.isep-field-success:focus {
+    box-shadow: 0 0 0 3px rgba(40,167,69,0.15) !important;
+}
+
+/* Fokus input ikut jenama (gantikan focus ring biru Bootstrap lalai) */
+.form-control:focus, .form-select:focus {
+    border-color: var(--isep-secondary) !important;
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.2) !important;
+}
+
+/* Butang "Choose File" input fail - kekal latar terang native, jadi teks mesti gelap
+   (dalam dark mode, warna teks input diwarisi jadi terang oleh sesetengah pelayar,
+   menyebabkan teks terang di atas butang native yang terang - tidak boleh dibaca) */
+input[type="file"]::file-selector-button,
+input[type="file"]::-webkit-file-upload-button {
+    color: #000000 !important;
+    font-weight: 600;
+}
+
+/* ---------- Auth pages (login/enroll) - latar hero ---------- */
+.auth-hero {
+    background: linear-gradient(135deg, var(--isep-primary-dark) 0%, var(--isep-primary) 45%, var(--isep-secondary) 100%) !important;
+}
+
+/* ---------- Name Effects (kosmetik kedai XP) ---------- */
+.name-fx-gradient {
+    background: linear-gradient(90deg,#7B68EE,#20B2AA,#FF6B6B);
+    -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 800;
+}
+.name-fx-glow {
+    color: #7B68EE; text-shadow: 0 0 10px #7B68EE, 0 0 20px #20B2AA; font-weight: 800;
+}
+.name-fx-shimmer {
+    background: linear-gradient(90deg,#7B68EE,#FFD93D,#20B2AA,#7B68EE); background-size: 200% auto;
+    -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 800;
+    animation: isepShimmerMove 2.5s linear infinite;
+}
+@keyframes isepShimmerMove { to { background-position: 200% center; } }
