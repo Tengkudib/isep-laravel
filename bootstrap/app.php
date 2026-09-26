@@ -19,6 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias(['role' => EnsureRole::class]);
 
+        // Di belakang Cloudflare/proksi: percaya X-Forwarded-Proto supaya URL dijana sebagai https
+        $middleware->trustProxies(at: '*');
+
         // Sistem asal memangkas input secara manual di tempat yang perlu sahaja (bukan kata laluan),
         // dan membezakan '' daripada null - jadi matikan transformasi input automatik Laravel.
         $middleware->remove([TrimStrings::class, ConvertEmptyStringsToNull::class]);
