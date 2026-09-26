@@ -28,7 +28,7 @@ Akaun demo sama seperti sistem asal: `ADMIN ISEP / admin123` dan `ALI AHMAD / ad
 ## Konfigurasi (`.env`)
 
 - `DB_DATABASE=isep_db` menyambung ke pangkalan data sedia ada.
-- `ANTHROPIC_API_KEY=` mengaktifkan chatbot iSEP Tutor. Biarkan kosong untuk nyahaktif.
+- `GEMINI_API_KEY=` mengaktifkan chatbot iSEP Tutor (Google Gemini). Biarkan kosong untuk nyahaktif.
 - `APP_DEBUG=true` hanya untuk pembangunan. Tukar kepada `false` sebelum digunakan oleh pelajar.
 
 Jangan jalankan `php artisan migrate`. Semua migrasi lalai Laravel telah dibuang supaya jadual sedia ada tidak disentuh.

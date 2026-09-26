@@ -35,10 +35,10 @@ return [
         ],
     ],
 
-    // Chatbot iSEP Tutor (Anthropic Claude API)
-    'anthropic' => [
-        'key' => env('ANTHROPIC_API_KEY', ''),
-        'model' => env('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'),
+    // Chatbot iSEP Tutor (Google Gemini API)
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY', ''),
+        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
     ],
 
 ];

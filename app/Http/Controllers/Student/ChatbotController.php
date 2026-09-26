@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Backend chatbot AI Tutor (Anthropic Claude API) - student/chatbot_api.php.
+ * Backend chatbot AI Tutor (Google Gemini API) - student/chatbot_api.php.
  */
 class ChatbotController extends Controller
 {
@@ -32,7 +32,7 @@ class ChatbotController extends Controller
             return response()->json(['error' => t('Soalan terlalu panjang. Ringkaskan sedikit.', 'Your question is too long. Please shorten it.')]);
         }
 
-        $apiKey = (string) config('services.anthropic.key');
+        $apiKey = (string) config('services.gemini.key');
         if ($apiKey === '') {
             return response()->json(['error' => t('Chatbot belum dikonfigurasi oleh pentadbir sistem.', 'The chatbot has not been configured by the system administrator yet.')]);
         }
@@ -69,7 +69,8 @@ class ChatbotController extends Controller
             $systemPrompt .= "\n\nPelajar sedang belajar bab \"{$chapterTitle}\". Nota bab ini disertakan sebagai rujukan konteks sahaja (bukan untuk disalin bulat-bulat):\n{$context}";
         }
 
-        $messages = [];
+        // Gemini guna peranan 'user' / 'model' (bukan 'assistant')
+        $contents = [];
         foreach (array_slice($history, -10) as $h) {
             if (! is_array($h) || ! isset($h['role'], $h['content'])) {
                 continue;
@@ -77,18 +78,27 @@ class ChatbotController extends Controller
             if (! in_array($h['role'], ['user', 'assistant'], true)) {
                 continue;
             }
-            $messages[] = ['role' => $h['role'], 'content' => (string) $h['content']];
+            // Perbualan mesti bermula dengan giliran pengguna
+            if ($contents === [] && $h['role'] !== 'user') {
+                continue;
+            }
+            $contents[] = [
+                'role' => $h['role'] === 'assistant' ? 'model' : 'user',
+                'parts' => [['text' => (string) $h['content']]],
+            ];
         }
-        $messages[] = ['role' => 'user', 'content' => $message];
+        $contents[] = ['role' => 'user', 'parts' => [['text' => $message]]];
+
+        $model = (string) config('services.gemini.model');
 
         try {
             $response = Http::timeout(30)
-                ->withHeaders(['x-api-key' => $apiKey, 'anthropic-version' => '2023-06-01'])
-                ->post('https://api.anthropic.com/v1/messages', [
-                    'model' => config('services.anthropic.model'),
-                    'max_tokens' => 700,
-                    'system' => $systemPrompt,
-                    'messages' => $messages,
+                ->withHeaders(['x-goog-api-key' => $apiKey])
+                ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent", [
+                    'system_instruction' => ['parts' => [['text' => $systemPrompt]]],
+                    'contents' => $contents,
+                    // Model 'thinking' turut guna kuota token output, jadi beri ruang lebih
+                    'generationConfig' => ['maxOutputTokens' => 2048],
                 ]);
         } catch (Throwable $e) {
             Log::error('iSEP chatbot HTTP error: '.$e->getMessage());
@@ -96,9 +106,13 @@ class ChatbotController extends Controller
             return response()->json(['error' => t('Tidak dapat menghubungi perkhidmatan AI. Cuba lagi sebentar.', 'Could not reach the AI service. Please try again shortly.')]);
         }
 
-        $text = $response->json('content.0.text');
-        if ($response->status() !== 200 || $text === null) {
-            Log::error('iSEP chatbot Anthropic API error: '.($response->json('error.message') ?? 'HTTP '.$response->status()));
+        $text = collect($response->json('candidates.0.content.parts', []))
+            ->reject(fn ($p) => ! empty($p['thought']))
+            ->pluck('text')->filter()->implode('');
+        if ($response->status() !== 200 || $text === '') {
+            Log::error('iSEP chatbot Gemini API error: '.($response->json('error.message')
+                ?? $response->json('candidates.0.finishReason')
+                ?? 'HTTP '.$response->status()));
 
             return response()->json(['error' => t('Maaf, ralat berlaku semasa menjana jawapan. Cuba lagi.', 'Sorry, something went wrong generating a reply. Please try again.')]);
         }
