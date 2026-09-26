@@ -7,6 +7,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Lecturer\LecturerController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Student\ChatbotController;
+use App\Http\Controllers\Student\CodeLabController;
 use App\Http\Controllers\Student\GameController;
 use App\Http\Controllers\Student\LearningController;
 use App\Http\Controllers\Student\ProfileController as StudentProfileController;
@@ -59,6 +60,8 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
     Route::post('/report', [ReportController::class, 'store']);
 
     Route::post('/chatbot', ChatbotController::class)->name('chatbot');
+    Route::post('/code/run', [CodeLabController::class, 'run'])->name('code.run');
+    Route::post('/code/assist', [CodeLabController::class, 'assist'])->name('code.assist');
 });
 
 // ---------- Admin ----------

@@ -286,6 +286,88 @@ class SystemTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // Pelajar - Cuba Sendiri (Judge0 & Gemini dipalsukan)
+    // ------------------------------------------------------------------
+
+    public function test_code_lab_runs_java_and_php_on_the_server(): void
+    {
+        Http::fake(['ce.judge0.com/*' => Http::response([
+            'stdout' => base64_encode("Jumlah: 6\n"), 'stderr' => null, 'compile_output' => null,
+            'status' => ['id' => 3, 'description' => 'Accepted'], 'time' => '0.05',
+        ])]);
+        $this->as(self::STUDENT);
+
+        $this->postJson('/student/code/run', ['language' => 'java', 'code' => 'public class Hello { public static void main(String[] a) { new Hello(); } }'])
+            ->assertOk()->assertJsonPath('ok', true)->assertJsonPath('stdout', "Jumlah: 6\n");
+        // Kelas public pelajar dinamakan semula kepada Main (keperluan Judge0), termasuk rujukan kepadanya
+        Http::assertSent(fn ($r) => $r['language_id'] === 91
+            && base64_decode($r['source_code']) === 'public class Main { public static void main(String[] a) { new Main(); } }');
+
+        $this->postJson('/student/code/run', ['language' => 'php', 'code' => '<?php echo 1;'])->assertOk()->assertJsonPath('ok', true);
+        Http::assertSent(fn ($r) => $r['language_id'] === 98);
+
+        $this->postJson('/student/code/run', ['language' => 'python', 'code' => 'print(1)'])->assertStatus(400);
+        $this->postJson('/student/code/run', ['language' => 'java', 'code' => '   '])->assertStatus(422);
+    }
+
+    public function test_code_lab_reports_compile_errors_and_runner_outage(): void
+    {
+        Http::fake(['ce.judge0.com/*' => Http::sequence()
+            ->push([
+                'stdout' => null, 'stderr' => null, 'compile_output' => base64_encode('Main.java:1: error: incompatible types'),
+                'status' => ['id' => 6, 'description' => 'Compilation Error'],
+            ])
+            ->push('Service Unavailable', 503),
+        ]);
+        $this->as(self::STUDENT)->postJson('/student/code/run', ['language' => 'java', 'code' => 'x'])
+            ->assertOk()->assertJsonPath('ok', false)->assertJsonPath('compile_output', 'Main.java:1: error: incompatible types');
+
+        $this->postJson('/student/code/run', ['language' => 'java', 'code' => 'x'])->assertStatus(502)->assertJsonStructure(['error']);
+    }
+
+    public function test_code_lab_run_is_rate_limited(): void
+    {
+        Http::fake(['ce.judge0.com/*' => Http::response(['stdout' => '', 'status' => ['id' => 3, 'description' => 'Accepted']])]);
+        $this->as(self::STUDENT);
+        for ($i = 0; $i < 20; $i++) {
+            $this->postJson('/student/code/run', ['language' => 'php', 'code' => '<?php echo 1;'])->assertOk();
+        }
+        $this->postJson('/student/code/run', ['language' => 'php', 'code' => '<?php echo 1;'])->assertStatus(429);
+    }
+
+    public function test_code_lab_ai_tutor_explains_challenges_and_reviews(): void
+    {
+        config(['services.gemini.key' => 'test-key']);
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response(['candidates' => [['content' => ['parts' => [['text' => 'Penerangan AI']]]]]])]);
+        $this->as(self::STUDENT);
+
+        foreach (['explain', 'challenge', 'review'] as $mode) {
+            $this->postJson('/student/code/assist', ['mode' => $mode, 'chapter_id' => 11, 'code' => '<?php echo 1;', 'output' => '1'])
+                ->assertOk()->assertJsonPath('reply', 'Penerangan AI');
+        }
+        // Prompt semakan menyertakan kod, output dan cabaran pelajar
+        $this->postJson('/student/code/assist', ['mode' => 'review', 'chapter_id' => 11, 'code' => '<?php echo 42;', 'output' => '42', 'challenge' => 'Cetak 42']);
+        Http::assertSent(fn ($r) => str_contains($r['contents'][0]['parts'][0]['text'], 'echo 42') && str_contains($r['contents'][0]['parts'][0]['text'], 'Cetak 42'));
+
+        $this->postJson('/student/code/assist', ['mode' => 'hack', 'chapter_id' => 11, 'code' => 'x'])->assertStatus(400);
+        $this->postJson('/student/code/assist', ['mode' => 'explain', 'chapter_id' => 11, 'code' => ''])->assertStatus(422);
+        $this->postJson('/student/code/assist', ['mode' => 'challenge', 'chapter_id' => 99999])->assertNotFound();
+    }
+
+    public function test_code_lab_is_for_students_only(): void
+    {
+        $this->as(self::LECTURER)->postJson('/student/code/run', ['language' => 'java', 'code' => 'x'])->assertForbidden();
+    }
+
+    public function test_try_it_tab_shows_for_every_language(): void
+    {
+        $this->as(self::STUDENT);
+        foreach ([1 => 'Pyodide', 18 => 'console.log()', 16 => 'pratonton', 11 => 'PHP 8.3', 6 => 'JDK 17'] as $chapter => $hint) {
+            $this->get('/student/chapter/'.$chapter)->assertOk()->assertSee('tryitEditor', false)->assertSee($hint)->assertSee('Semak Kod Saya');
+        }
+    }
+
+    // ------------------------------------------------------------------
     // Pelajar - permainan
     // ------------------------------------------------------------------
 
@@ -320,6 +402,29 @@ class SystemTest extends TestCase
 
         $this->as($other)->postJson('/student/games/api', ['action' => 'resign', 'match_id' => $match['match_id']])->assertOk();
         $this->as(self::STUDENT)->postJson('/student/games/api', ['action' => 'move', 'match_id' => $match['match_id'], 'board_state' => 'y', 'next_turn' => 'player1'])->assertStatus(409);
+    }
+
+    public function test_pvp_opponent_who_leaves_loses_and_dead_matches_leave_the_lobby(): void
+    {
+        $other = (int) DB::table('users')->where('role', 'student')->where('id', '!=', self::STUDENT)->value('id');
+
+        // Perlawanan menunggu yang pembuatnya sudah keluar tidak dipaparkan di lobi
+        $dead = $this->as(self::STUDENT)->postJson('/student/games/api', ['action' => 'create', 'game_type' => 'chess', 'mode' => 'pvp'])->json('match.match_id');
+        \Illuminate\Support\Facades\Cache::forget('game-presence:'.$dead.':'.self::STUDENT);
+        $lobby = $this->as($other)->getJson('/student/games/api?action=lobby&game_type=chess')->json('open_matches');
+        $this->assertNotContains($dead, array_column($lobby, 'id'));
+        $this->assertSame('abandoned', DB::table('game_matches')->where('id', $dead)->value('status'));
+
+        // Perlawanan aktif: yang masih ada kekal ongoing selagi lawan aktif
+        $id = $this->as(self::STUDENT)->postJson('/student/games/api', ['action' => 'create', 'game_type' => 'chess', 'mode' => 'pvp'])->json('match.match_id');
+        $this->assertContains($id, array_column($this->as($other)->getJson('/student/games/api?action=lobby&game_type=chess')->json('open_matches'), 'id'));
+        $this->as($other)->postJson('/student/games/api', ['action' => 'join', 'match_id' => $id])->assertOk();
+        $this->as(self::STUDENT)->getJson('/student/games/api?action=state&match_id='.$id)->assertJsonPath('match.status', 'ongoing');
+
+        // Lawan menutup tab -> selepas tempoh kehadiran tamat, pemain yang tinggal menang
+        \Illuminate\Support\Facades\Cache::forget('game-presence:'.$id.':'.$other);
+        $this->as(self::STUDENT)->getJson('/student/games/api?action=state&match_id='.$id)
+            ->assertJsonPath('match.status', 'finished')->assertJsonPath('match.winner', 'player1');
     }
 
     public function test_game_api_rejects_bad_input(): void

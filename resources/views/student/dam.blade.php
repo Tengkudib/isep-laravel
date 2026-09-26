@@ -386,10 +386,17 @@ function backToModeChoice() {
     document.getElementById('pvpLobbyPanel').style.display = 'none';
     document.getElementById('waitingPanel').style.display = 'none';
 }
+let lobbyTimer = null;
 function showPvpLobby() {
     document.getElementById('modeChoice').style.display = 'none';
     document.getElementById('pvpLobbyPanel').style.display = 'block';
     refreshLobby();
+    clearInterval(lobbyTimer);
+    // Auto-refresh lobi selagi panel lobi dipaparkan
+    lobbyTimer = setInterval(() => {
+        if (document.getElementById('pvpLobbyPanel').style.display === 'none') { clearInterval(lobbyTimer); return; }
+        refreshLobby();
+    }, 3000);
 }
 function refreshLobby() {
     apiGet('lobby', { game_type: 'dam' }).then(res => {
@@ -579,14 +586,18 @@ function onSquareClick(r, c) {
 }
 
 function afterTurnEnds() {
-    if (checkGameOverAndReport()) return;
-
     if (mode === 'pvp') {
+        // Hantar langkah dahulu (termasuk langkah terakhir yang menamatkan permainan) supaya lawan nampak papan akhir
         const nextTurn = p1TurnNow ? 'player1' : 'player2';
         apiPost('move', { match_id: matchId, board_state: JSON.stringify(board), next_turn: nextTurn }).then(res => {
             if (res.error) alert(res.error);
+            checkGameOverAndReport();
         });
-    } else if (mode === 'ai' && !p1TurnNow) {
+        return;
+    }
+    if (checkGameOverAndReport()) return;
+
+    if (mode === 'ai' && !p1TurnNow) {
         document.getElementById('turnPill').textContent = I18N.computerThinking;
         document.getElementById('turnPill').className = 'turn-pill bg-secondary text-white';
         setTimeout(makeAiTurn, 500);

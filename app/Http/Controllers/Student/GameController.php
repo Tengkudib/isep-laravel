@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\LearningService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -23,6 +24,10 @@ class GameController extends Controller
 
     // Bilangan kemenangan vs komputer yang diberi XP setiap hari
     private const AI_XP_WINS_PER_DAY = 5;
+
+    // PvP: pemain dianggap sudah keluar jika pelayarnya tidak poll selama tempoh ini (saat).
+    // Cukup panjang untuk tab latar belakang yang di-throttle oleh pelayar (sehingga ~1 minit).
+    private const PVP_PRESENCE_TTL = 90;
 
     private const CHESS_START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -74,6 +79,34 @@ class GameController extends Controller
         return row(DB::table('game_matches')->where('id', $id));
     }
 
+    private function touchPresence(int $matchId, int $studentId): void
+    {
+        Cache::put("game-presence:$matchId:$studentId", true, self::PVP_PRESENCE_TTL);
+    }
+
+    private function isPresent(int $matchId, ?int $studentId): bool
+    {
+        return $studentId !== null && Cache::has("game-presence:$matchId:$studentId");
+    }
+
+    /**
+     * Jika lawan PvP sudah lama tidak aktif (tab ditutup / sambungan putus), pemain yang masih ada menang.
+     */
+    private function resolveAbandonedPvp(array $m, int $studentId): array
+    {
+        if ($m['mode'] !== 'pvp' || $m['status'] !== 'ongoing') {
+            return $m;
+        }
+        $myRole = $this->roleOf($m, $studentId);
+        $opponentId = $myRole === 'player1' ? (int) $m['player2_id'] : (int) $m['player1_id'];
+        if ($myRole === null || $this->isPresent((int) $m['id'], $opponentId)) {
+            return $m;
+        }
+        DB::table('game_matches')->where('id', $m['id'])->where('status', 'ongoing')->update(['status' => 'finished', 'winner' => $myRole]);
+
+        return $this->getMatch((int) $m['id']);
+    }
+
     private function roleOf(array $m, int $studentId): ?string
     {
         return $studentId == $m['player1_id'] ? 'player1' : ($studentId == $m['player2_id'] ? 'player2' : null);
@@ -114,10 +147,19 @@ class GameController extends Controller
             if (! in_array($gameType, ['chess', 'dam'], true)) {
                 return $this->respond(['error' => 'Jenis permainan tidak sah.'], 400);
             }
-            $rows = rows(DB::table('game_matches as gm')->join('users as u', 'u.id', '=', 'gm.player1_id')
-                ->select('gm.id', 'gm.created_at', 'u.name as creator_name')
+            $rows = [];
+            foreach (rows(DB::table('game_matches as gm')->join('users as u', 'u.id', '=', 'gm.player1_id')
+                ->select('gm.id', 'gm.player1_id', 'gm.created_at', 'u.name as creator_name')
                 ->where('gm.game_type', $gameType)->where('gm.mode', 'pvp')->where('gm.status', 'waiting')
-                ->where('gm.player1_id', '!=', $studentId)->orderByDesc('gm.created_at')->limit(20));
+                ->where('gm.player1_id', '!=', $studentId)->orderByDesc('gm.created_at')->limit(50)) as $r) {
+                if ($this->isPresent((int) $r['id'], (int) $r['player1_id'])) {
+                    unset($r['player1_id']);
+                    $rows[] = $r;
+                } else {
+                    DB::table('game_matches')->where('id', $r['id'])->where('status', 'waiting')->update(['status' => 'abandoned']);
+                }
+            }
+            $rows = array_slice($rows, 0, 20);
 
             return $this->respond(['open_matches' => $rows]);
         }
@@ -138,6 +180,8 @@ class GameController extends Controller
             if ($studentId != $m['player1_id'] && $studentId != $m['player2_id']) {
                 return $this->respond(['error' => 'Akses ditolak.'], 403);
             }
+            $this->touchPresence((int) $m['id'], $studentId);
+            $m = $this->resolveAbandonedPvp($m, $studentId);
 
             return $this->respond(['match' => $this->matchView($m, $studentId)]);
         }
@@ -174,6 +218,7 @@ class GameController extends Controller
                     'turn' => 'player1',
                     'last_move_at' => DB::raw('NOW()'),
                 ]);
+                $this->touchPresence($newId, $studentId);
 
                 return $this->respond(['match' => $this->matchView($this->getMatch($newId), $studentId)]);
             }
@@ -196,6 +241,7 @@ class GameController extends Controller
                 if (! $ok) {
                     return $this->respond(['error' => 'Perlawanan baru sahaja disertai pemain lain.'], 409);
                 }
+                $this->touchPresence($matchId, $studentId);
 
                 return $this->respond(['match' => $this->matchView($this->getMatch($matchId), $studentId)]);
             }
@@ -242,6 +288,7 @@ class GameController extends Controller
                     'move_count' => DB::raw('move_count + 1'),
                     'last_move_at' => DB::raw('NOW()'),
                 ]);
+                $this->touchPresence($matchId, $studentId);
 
                 return $this->respond(['match' => $this->matchView($this->getMatch($matchId), $studentId)]);
             }

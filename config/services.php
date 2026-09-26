@@ -41,4 +41,11 @@ return [
         'model' => env('GEMINI_MODEL', 'gemini-3.5-flash-lite'),
     ],
 
+    // Pelaksana kod Java & PHP untuk "Cuba Sendiri" (API Judge0). Instans awam percuma secara lalai;
+    // tukar ke instans sendiri / RapidAPI untuk kegunaan besar (CODE_RUNNER_KEY dihantar sebagai X-Auth-Token).
+    'code_runner' => [
+        'url' => env('CODE_RUNNER_URL', 'https://ce.judge0.com'),
+        'key' => env('CODE_RUNNER_KEY', ''),
+    ],
+
 ];
