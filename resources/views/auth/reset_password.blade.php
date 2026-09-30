@@ -43,7 +43,7 @@
     <div class="orb orb-3"></div>
     <div class="reset-card">
         <div class="text-center mb-4">
-            <div class="brand-logo"><img src="{{ asset('assets/img/iSEP.png') }}" alt="iSEP"></div>
+            <div class="brand-logo"><img src="{{ asset('assets/img/iSEP-256.png') }}" alt="iSEP"></div>
             <h4 class="fw-bold mb-0">{{ t('Tetapkan Semula Kata Laluan', 'Reset Password') }}</h4>
             <small class="text-muted">{{ t('Lupa kata laluan? Kami akan bantu anda.', 'Forgot your password? We can help.') }}</small>
         </div>

@@ -90,3 +90,86 @@ if (! function_exists('row')) {
         return $r ? (array) $r : null;
     }
 }
+
+if (! function_exists('safe_html')) {
+    /**
+     * Bersihkan HTML nota yang ditulis admin/pensyarah: kekalkan tag pemformatan asas,
+     * buang skrip, atribut acara (onclick dll.), gaya dan pautan javascript:.
+     */
+    function safe_html(?string $html): string
+    {
+        $html = (string) $html;
+        if (trim($html) === '') {
+            return '';
+        }
+
+        $allowed = [
+            'p' => [], 'br' => [], 'hr' => [], 'b' => [], 'strong' => [], 'i' => [], 'em' => [], 'u' => [], 's' => [],
+            'sub' => [], 'sup' => [], 'small' => [], 'mark' => [], 'span' => [], 'div' => [], 'blockquote' => [],
+            'h1' => [], 'h2' => [], 'h3' => [], 'h4' => [], 'h5' => [], 'h6' => [],
+            'ul' => [], 'ol' => [], 'li' => [], 'pre' => [], 'code' => [],
+            'table' => [], 'thead' => [], 'tbody' => [], 'tr' => [], 'th' => ['colspan', 'rowspan'], 'td' => ['colspan', 'rowspan'],
+            'a' => ['href', 'title'], 'img' => ['src', 'alt', 'title', 'width', 'height'],
+        ];
+        // Elemen yang dibuang bersama isinya
+        $drop = ['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'textarea', 'select', 'link', 'meta', 'base', 'svg', 'math'];
+
+        $doc = new DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        $doc->loadHTML('<?xml encoding="UTF-8"><div id="__safe_root">'.$html.'</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        $isSafeUrl = fn (string $url) => ! preg_match('/^\s*(javascript|vbscript|data):/i', html_entity_decode($url))
+            || preg_match('/^\s*data:image\/(png|jpe?g|gif|webp);/i', $url);
+
+        $clean = function (DOMNode $node) use (&$clean, $allowed, $drop, $isSafeUrl) {
+            foreach (iterator_to_array($node->childNodes) as $child) {
+                if ($child instanceof DOMComment || $child instanceof DOMProcessingInstruction) {
+                    $node->removeChild($child);
+
+                    continue;
+                }
+                if (! $child instanceof DOMElement) {
+                    continue;
+                }
+                $tag = strtolower($child->tagName);
+                if (in_array($tag, $drop, true)) {
+                    $node->removeChild($child);
+
+                    continue;
+                }
+                $clean($child);
+                if (! isset($allowed[$tag])) {
+                    // Tag tidak dikenali: kekalkan isinya sahaja
+                    while ($child->firstChild) {
+                        $node->insertBefore($child->firstChild, $child);
+                    }
+                    $node->removeChild($child);
+
+                    continue;
+                }
+                foreach (iterator_to_array($child->attributes) as $attr) {
+                    $name = strtolower($attr->name);
+                    if (! in_array($name, $allowed[$tag], true) || (in_array($name, ['href', 'src'], true) && ! $isSafeUrl($attr->value))) {
+                        $child->removeAttribute($attr->name);
+                    }
+                }
+                if ($tag === 'a' && $child->hasAttribute('href')) {
+                    $child->setAttribute('target', '_blank');
+                    $child->setAttribute('rel', 'noopener noreferrer');
+                }
+            }
+        };
+
+        $root = $doc->getElementById('__safe_root');
+        $clean($root);
+
+        $out = '';
+        foreach ($root->childNodes as $child) {
+            $out .= $doc->saveHTML($child);
+        }
+
+        return $out;
+    }
+}

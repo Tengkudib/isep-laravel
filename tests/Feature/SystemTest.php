@@ -69,14 +69,22 @@ class SystemTest extends TestCase
             DB::table('users')->where('id', $id)->update(['password' => Hash::make('secret123')]);
             $username = DB::table('users')->where('id', $id)->value('username');
             $this->post('/login', ['username' => $username, 'password' => 'secret123'])->assertRedirect($url);
-            $this->get('/logout');
+            $this->post('/logout');
         }
     }
 
     public function test_logout(): void
     {
-        $this->as(self::STUDENT)->get('/logout')->assertRedirect('/login');
+        $this->as(self::STUDENT)->post('/logout')->assertRedirect('/login');
         $this->assertGuest();
+    }
+
+    public function test_logout_by_plain_link_does_not_log_out(): void
+    {
+        // GET /logout (cth. imej/pautan dari laman lain) tidak lagi log keluar pengguna
+        $this->as(self::STUDENT)->get('/logout')->assertRedirect('/');
+        $this->assertAuthenticated();
+        $this->get('/student/dashboard')->assertOk()->assertSee('isepLogoutForm', false)->assertSee('data-logout', false);
     }
 
     public function test_roles_cannot_open_other_roles_pages(): void
@@ -116,6 +124,19 @@ class SystemTest extends TestCase
         foreach (['/student/dashboard', '/student/chapter/11', '/student/shop', '/student/profile'] as $url) {
             $this->get($url)->assertOk();
         }
+    }
+
+    public function test_notes_html_is_sanitised_before_students_see_it(): void
+    {
+        DB::table('learning_content')->insert([
+            'chapter_id' => 11, 'content_type' => 'notes', 'title' => 'Nota Ujian', 'order_number' => 1,
+            'content' => '<p onclick="steal()">Nota <b>tebal</b></p><script>steal()</script><a href="javascript:steal()">klik</a>',
+        ]);
+        $this->as(self::STUDENT)->get('/student/chapter/11')->assertOk()
+            ->assertSee('<p>Nota <b>tebal</b></p>', false)
+            ->assertDontSee('<script>steal()', false)
+            ->assertDontSee('onclick="steal()"', false)
+            ->assertDontSee('javascript:steal()', false);
     }
 
     public function test_certificate_page_for_owner_and_unknown_code(): void
@@ -169,10 +190,28 @@ class SystemTest extends TestCase
         if (! $exercise) {
             $this->markTestSkipped('Bab 11 tiada latihan.');
         }
-        $before = $this->xp(self::STUDENT);
-        $this->as(self::STUDENT)->post('/student/chapter/11', ['submit_exercise' => 1, 'exercise_id' => $exercise, 'answer_code' => 'echo "hi";'])
+        DB::table('exercise_submissions')->where('student_id', self::STUDENT)->where('exercise_id', $exercise)->delete();
+        DB::table('users')->where('id', self::STUDENT)->update(['xp_booster_until' => null]);
+        $submit = fn () => $this->as(self::STUDENT)->post('/student/chapter/11', ['submit_exercise' => 1, 'exercise_id' => $exercise, 'answer_code' => 'echo "hi";'])
             ->assertRedirect('/student/chapter/11');
-        $this->assertGreaterThanOrEqual($before + 20, $this->xp(self::STUDENT));
+
+        $before = $this->xp(self::STUDENT);
+        $submit();
+        $this->assertSame($before + 20, $this->xp(self::STUDENT));
+
+        // Hantar semula latihan yang sama: jawapan disimpan, tetapi tiada XP tambahan
+        $submit();
+        $submit();
+        $this->assertSame($before + 20, $this->xp(self::STUDENT));
+        $this->assertSame(3, DB::table('exercise_submissions')->where('student_id', self::STUDENT)->where('exercise_id', $exercise)->count());
+    }
+
+    public function test_exercise_from_another_chapter_is_rejected(): void
+    {
+        $foreign = DB::table('exercises')->where('chapter_id', '!=', 11)->value('id');
+        $before = DB::table('exercise_submissions')->count();
+        $this->as(self::STUDENT)->post('/student/chapter/11', ['submit_exercise' => 1, 'exercise_id' => $foreign, 'answer_code' => 'x']);
+        $this->assertSame($before, DB::table('exercise_submissions')->count());
     }
 
     public function test_quiz_pass_and_fail(): void
@@ -182,6 +221,8 @@ class SystemTest extends TestCase
             $this->markTestSkipped('Bab 11 tiada kuiz.');
         }
         $this->as(self::STUDENT);
+        DB::table('student_progress')->where('student_id', self::STUDENT)->where('chapter_id', 11)->update(['quiz_status' => 'failed']);
+        DB::table('users')->where('id', self::STUDENT)->update(['xp_booster_until' => null]);
 
         $wrong = ['submit_quiz' => 1];
         $right = ['submit_quiz' => 1];
@@ -193,7 +234,11 @@ class SystemTest extends TestCase
         $this->post('/student/chapter/11', $wrong)->assertSessionHas('last_quiz_result', fn ($r) => $r['pass'] === false);
         $before = $this->xp(self::STUDENT);
         $this->post('/student/chapter/11', $right)->assertSessionHas('last_quiz_result', fn ($r) => $r['pass'] === true && (float) $r['percentage'] === 100.0);
-        $this->assertGreaterThan($before, $this->xp(self::STUDENT));
+        $this->assertSame($before + 30, $this->xp(self::STUDENT));
+
+        // Lulus semula bab yang sama tidak memberi XP lagi
+        $this->post('/student/chapter/11', $right)->assertSessionHas('last_quiz_result', fn ($r) => $r['pass'] === true);
+        $this->assertSame($before + 30, $this->xp(self::STUDENT));
     }
 
     public function test_locked_chapter_cannot_be_submitted(): void

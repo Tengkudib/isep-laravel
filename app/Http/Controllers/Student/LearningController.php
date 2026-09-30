@@ -221,17 +221,28 @@ class LearningController extends Controller
             $message = t('Aktiviti "Try It Yourself" ditandakan selesai!', '"Try It Yourself" activity marked as complete!');
         }
         if ($request->has('submit_exercise')) {
+            $exerciseId = (int) $request->input('exercise_id');
+            if (! DB::table('exercises')->where('id', $exerciseId)->where('chapter_id', $id)->exists()) {
+                return redirect()->route('student.chapter', $id);
+            }
+            // XP hanya untuk hantaran pertama setiap latihan - hantar semula dibenarkan tetapi tiada XP tambahan
+            $firstSubmission = ! DB::table('exercise_submissions')->where('student_id', $studentId)->where('exercise_id', $exerciseId)->exists();
+
             DB::table('exercise_submissions')->insert([
                 'student_id' => $studentId,
-                'exercise_id' => (int) $request->input('exercise_id'),
+                'exercise_id' => $exerciseId,
                 'answer_code' => trim((string) $request->input('answer_code', '')),
                 'status' => 'completed',
             ]);
             $setStatus('exercise_status');
-            $this->learning->addXp($studentId, 20, 'Exercise Completed');
-            $this->learning->checkFirstCodeBadge($studentId);
+            if ($firstSubmission) {
+                $this->learning->addXp($studentId, 20, 'Exercise Completed');
+                $this->learning->checkFirstCodeBadge($studentId);
+            }
             $this->learning->recalculateChapterCompletion($studentId, $id);
-            $message = t('Latihan dihantar! +20 XP', 'Exercise submitted! +20 XP');
+            $message = $firstSubmission
+                ? t('Latihan dihantar! +20 XP', 'Exercise submitted! +20 XP')
+                : t('Jawapan dikemas kini. (XP hanya diberi untuk hantaran pertama.)', 'Answer updated. (XP is only given for the first submission.)');
         }
         if ($request->has('submit_quiz')) {
             $quizQuestions = rows(DB::table('quizzes')->where('chapter_id', $id));
@@ -268,7 +279,8 @@ class LearningController extends Controller
                 [$passStatus === 'pass' ? 'passed' : 'failed', $percentage, $progress['id']]
             );
 
-            if ($passStatus === 'pass') {
+            // XP lulus kuiz hanya sekali bagi setiap bab (bukan setiap kali lulus semula)
+            if ($passStatus === 'pass' && $progress['quiz_status'] !== 'passed') {
                 $this->learning->addXp($studentId, 30, 'Quiz Passed');
             }
             $this->learning->checkQuizMasterBadge($studentId);

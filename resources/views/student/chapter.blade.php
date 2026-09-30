@@ -152,9 +152,8 @@
             <div class="card-modern p-4">
                 @foreach ($notes as $n)
                     <h5 class="fw-bold">{{ $n['title'] }}</h5>
-                    <div>@php
- echo $n['content']; // konten notes disimpan sebagai HTML terkawal oleh admin 
-@endphp</div>
+                    {{-- Nota ialah HTML asas daripada admin/pensyarah; safe_html() buang skrip & atribut berbahaya --}}
+                    <div>{!! safe_html($n['content']) !!}</div>
 
                     @if (!empty($n['file_path']))
 @php

@@ -31,7 +31,9 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
 
-Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
+// Log keluar mesti POST (CSRF) supaya laman lain tidak boleh log keluar pengguna melalui pautan/imej
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::get('/logout', fn () => redirect()->route('home'));
 Route::get('/reset-password', [AuthController::class, 'showReset'])->name('password.reset');
 
 // ---------- Pelajar ----------

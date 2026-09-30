@@ -11,6 +11,12 @@
         .chapter-row { display:flex; align-items:center; gap:14px; padding:14px; border-radius:var(--isep-r-lg); }
         .chapter-row:hover { background:#FAF7F0; }
         .chapter-row:hover .fw-semibold, .chapter-row:hover .text-muted { color:#0B2545 !important; }
+        /* Tajuk panjang boleh dibalut supaya butang tidak terkeluar dari skrin */
+        .chapter-row > .flex-grow-1 { min-width: 0; overflow-wrap: anywhere; }
+        @media (max-width: 575.98px) {
+            .chapter-row { flex-wrap: wrap; gap: 10px; }
+            .chapter-row > .flex-grow-1 { flex-basis: calc(100% - 90px); }
+        }
     </style>
 @endpush
 

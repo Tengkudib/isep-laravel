@@ -47,7 +47,7 @@
                             <div>
                                 <span class="badge bg-secondary mb-1">{!! $c['content_type'] !!}</span>
                                 <div class="fw-semibold small">{{ $c['title'] }}</div>
-                                <div class="small text-muted">{!! mb_strimwidth(strip_tags($c['content'] ?? ''), 0, 100, '...') !!}</div>
+                                <div class="small text-muted">{{ mb_strimwidth(strip_tags($c['content'] ?? ''), 0, 100, '...') }}</div>
                                 @if (!empty($c['file_path']))
                                 <a href="{{ asset($c['file_path']) }}" target="_blank" class="small">
                                     <i class="fas fa-paperclip me-1"></i>{{ $c['file_name'] }}

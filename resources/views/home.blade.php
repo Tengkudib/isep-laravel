@@ -180,7 +180,7 @@
 <!-- Navbar -->
 <nav class="public-nav" id="publicNav">
     <a href="{{ route('home') }}" class="brand">
-        <img src="{{ asset('assets/img/iSEP.png') }}" alt="iSEP">
+        <img src="{{ asset('assets/img/iSEP-256.png') }}" alt="iSEP">
         <span>iSEP</span>
     </a>
     <div class="nav-right">
