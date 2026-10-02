@@ -179,6 +179,7 @@ class LearningController extends Controller
             'chatbotChapterId' => $id,
             'progress' => $progress,
             'message' => session('message'),
+            'exercise_error' => session('exercise_error'),
             'quiz_result' => session('last_quiz_result'),
             'notes' => array_filter($allContent, fn ($c) => $c['content_type'] === 'notes'),
             'videos' => array_filter($allContent, fn ($c) => $c['content_type'] === 'video'),
@@ -221,10 +222,16 @@ class LearningController extends Controller
             $message = t('Aktiviti "Try It Yourself" ditandakan selesai!', '"Try It Yourself" activity marked as complete!');
         }
         if ($request->has('submit_exercise')) {
+            $answerCode = trim((string) $request->input('answer_code', ''));
+            if ($answerCode === '') {
+                return redirect()->route('student.chapter', $id)
+                    ->with('exercise_error', t('Sila tulis jawapan anda sebelum menghantar latihan.', 'Please write your answer before submitting the exercise.'));
+            }
+
             DB::table('exercise_submissions')->insert([
                 'student_id' => $studentId,
                 'exercise_id' => (int) $request->input('exercise_id'),
-                'answer_code' => trim((string) $request->input('answer_code', '')),
+                'answer_code' => $answerCode,
                 'status' => 'completed',
             ]);
             $setStatus('exercise_status');

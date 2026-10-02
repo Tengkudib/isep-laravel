@@ -6,6 +6,7 @@
 @push('styles')
 <style>
         body { background: #FAF7F0; font-family: 'Segoe UI', sans-serif; }
+        .exercise-form button[name="submit_exercise"]:disabled { background: #adb5bd; border-color: #adb5bd; color: #fff; opacity: 1; cursor: not-allowed; pointer-events: auto; }
         .topbar {
             background: linear-gradient(135deg, #0B2545 0%, #13315C 55%, #D4AF37 100%);
             color: white; padding: 24px 32px; border-radius: 0 0 var(--isep-r-xl) var(--isep-r-xl);
@@ -104,6 +105,10 @@
 
     @if ($message)
     <div class="alert alert-success border-0 shadow-sm"><i class="fas fa-check-circle me-2"></i>{{ $message }}</div>
+    @endif
+
+    @if ($exercise_error)
+    <div class="alert alert-warning border-0 shadow-sm"><i class="fas fa-triangle-exclamation me-2"></i>{{ $exercise_error }}</div>
     @endif
 
     @if ($quiz_result)
@@ -271,12 +276,12 @@
                 @if ($ex['sample_input'])<p class="small"><strong>{{ t('Input Sampel:', 'Sample Input:') }}</strong> {{ $ex['sample_input'] }}</p>@endif
                 @if ($ex['expected_output'])<p class="small"><strong>{{ t('Output Dijangka:', 'Expected Output:') }}</strong> {{ $ex['expected_output'] }}</p>@endif
 
-                <form method="POST" action="{{ route('student.chapter', $chapter_id) }}">
+                <form method="POST" action="{{ route('student.chapter', $chapter_id) }}" class="exercise-form">
                     @csrf
                     <input type="hidden" name="exercise_id" value="{!! $ex['id'] !!}">
-                    <textarea name="answer_code" class="form-control mb-2" rows="4" placeholder="{{ t('Tulis jawapan/kod anda di sini...', 'Write your answer/code here...') }}" style="font-family:monospace;"></textarea>
+                    <textarea name="answer_code" class="form-control mb-2" rows="4" required placeholder="{{ t('Tulis jawapan/kod anda di sini...', 'Write your answer/code here...') }}" style="font-family:monospace;"></textarea>
                     <div class="d-flex gap-2">
-                        <button type="submit" name="submit_exercise" class="btn btn-primary btn-sm">{{ t('Hantar Jawapan', 'Submit Answer') }} (+{!! $ex['points'] !!} XP)</button>
+                        <button type="submit" name="submit_exercise" class="btn btn-primary btn-sm" disabled title="{{ t('Tulis jawapan dahulu', 'Write your answer first') }}">{{ t('Hantar Jawapan', 'Submit Answer') }} (+{!! $ex['points'] !!} XP)</button>
                         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#hint-{!! $ex['id'] !!}">💡 {{ t('Tunjuk Petunjuk', 'Show Hint') }}</button>
                     </div>
                     <div class="collapse mt-2" id="hint-{!! $ex['id'] !!}">
@@ -473,6 +478,17 @@ function runHtmlPreview() {
 @if ($lang_slug === 'html')
 document.addEventListener('DOMContentLoaded', runHtmlPreview);
 @endif
+</script>
+
+<script>
+// Butang "Hantar Jawapan" latihan hanya aktif bila jawapan tidak kosong
+document.querySelectorAll('.exercise-form').forEach(function (form) {
+    const answer = form.querySelector('textarea[name="answer_code"]');
+    const submitBtn = form.querySelector('button[name="submit_exercise"]');
+    const sync = function () { submitBtn.disabled = answer.value.trim() === ''; };
+    answer.addEventListener('input', sync);
+    sync();
+});
 </script>
 
 @if (count($quizzes) > 0)
