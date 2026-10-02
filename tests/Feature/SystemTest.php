@@ -214,6 +214,25 @@ class SystemTest extends TestCase
         $this->assertSame($before, DB::table('exercise_submissions')->count());
     }
 
+    public function test_empty_exercise_answer_is_rejected(): void
+    {
+        $exercise = DB::table('exercises')->where('chapter_id', 11)->value('id');
+        if (! $exercise) {
+            $this->markTestSkipped('Bab 11 tiada latihan.');
+        }
+        $before = DB::table('exercise_submissions')->count();
+        $xpBefore = $this->xp(self::STUDENT);
+
+        foreach (['', "   \n\t "] as $answer) {
+            $this->as(self::STUDENT)->post('/student/chapter/11', ['submit_exercise' => 1, 'exercise_id' => $exercise, 'answer_code' => $answer])
+                ->assertRedirect('/student/chapter/11')
+                ->assertSessionHas('exercise_error');
+        }
+
+        $this->assertSame($before, DB::table('exercise_submissions')->count());
+        $this->assertSame($xpBefore, $this->xp(self::STUDENT));
+    }
+
     public function test_quiz_pass_and_fail(): void
     {
         $quizzes = DB::table('quizzes')->where('chapter_id', 11)->get();
