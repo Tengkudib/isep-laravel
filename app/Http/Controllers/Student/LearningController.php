@@ -173,6 +173,13 @@ class LearningController extends Controller
 
         $allContent = rows(DB::table('learning_content')->where('chapter_id', $id)->orderBy('order_number'));
 
+        $allExercises = rows(DB::table('exercises')->where('chapter_id', $id));
+        $doneExerciseIds = DB::table('exercise_submissions as es')->join('exercises as e', 'e.id', '=', 'es.exercise_id')
+            ->where('es.student_id', $studentId)->where('e.chapter_id', $id)->where('es.status', 'completed')
+            ->distinct()->pluck('es.exercise_id')->map(fn ($v) => (int) $v)->all();
+        $totalExercises = count($allExercises);
+        $exercises = array_values(array_filter($allExercises, fn ($ex) => ! in_array((int) $ex['id'], $doneExerciseIds, true)));
+
         return view('student.chapter', [
             'chapter' => $chapter,
             'chapter_id' => $id,
@@ -180,12 +187,16 @@ class LearningController extends Controller
             'progress' => $progress,
             'message' => session('message'),
             'exercise_error' => session('exercise_error'),
+            'exercise_error_id' => (int) session('exercise_error_id', 0),
+            'exercise_last_answer' => (string) session('exercise_last_answer', ''),
+            'active_tab' => session('active_tab'),
             'quiz_result' => session('last_quiz_result'),
             'notes' => array_filter($allContent, fn ($c) => $c['content_type'] === 'notes'),
             'videos' => array_filter($allContent, fn ($c) => $c['content_type'] === 'video'),
             'code_examples' => array_filter($allContent, fn ($c) => $c['content_type'] === 'code_example'),
             'tips' => array_filter($allContent, fn ($c) => in_array($c['content_type'], ['tip', 'common_error'])),
-            'exercises' => rows(DB::table('exercises')->where('chapter_id', $id)),
+            'exercises' => $exercises,
+            'total_exercises' => $totalExercises,
             'quizzes' => rows(DB::table('quizzes')->where('chapter_id', $id)),
         ]);
     }
@@ -206,17 +217,21 @@ class LearningController extends Controller
         $setStatus = fn (string $col) => DB::table('student_progress')->where('id', $progress['id'])->update([$col => 'completed']);
         $message = null;
 
+        $activeTab = null;
         if ($request->has('mark_notes')) {
+            $activeTab = 'notes-tab';
             $setStatus('notes_status');
             $this->learning->recalculateChapterCompletion($studentId, $id);
             $message = t('Nota ditandakan selesai!', 'Notes marked as complete!');
         }
         if ($request->has('mark_video')) {
+            $activeTab = 'video-tab';
             $setStatus('video_status');
             $this->learning->recalculateChapterCompletion($studentId, $id);
             $message = t('Video ditandakan selesai!', 'Video marked as complete!');
         }
         if ($request->has('mark_try_it')) {
+            $activeTab = 'tryit-tab';
             $setStatus('try_it_status');
             $this->learning->recalculateChapterCompletion($studentId, $id);
             $message = t('Aktiviti "Try It Yourself" ditandakan selesai!', '"Try It Yourself" activity marked as complete!');
@@ -224,31 +239,52 @@ class LearningController extends Controller
         if ($request->has('submit_exercise')) {
             $exerciseId = (int) $request->input('exercise_id');
             $answerCode = trim((string) $request->input('answer_code', ''));
-            if ($answerCode === '') {
-                return redirect()->route('student.chapter', $id)
-                    ->with('exercise_error', t('Sila tulis jawapan anda sebelum menghantar latihan.', 'Please write your answer before submitting the exercise.'));
-            }
-            if (! DB::table('exercises')->where('id', $exerciseId)->where('chapter_id', $id)->exists()) {
+            $exercise = row(DB::table('exercises')->where('id', $exerciseId)->where('chapter_id', $id));
+            if (! $exercise) {
                 return redirect()->route('student.chapter', $id);
             }
-            // XP hanya untuk hantaran pertama setiap latihan - hantar semula dibenarkan tetapi tiada XP tambahan
-            $firstSubmission = ! DB::table('exercise_submissions')->where('student_id', $studentId)->where('exercise_id', $exerciseId)->exists();
+            $back = fn (array $flash) => redirect()->to(route('student.chapter', $id).'#exercise-'.$exerciseId)
+                ->with($flash + ['active_tab' => 'exercise-tab']);
 
-            DB::table('exercise_submissions')->insert([
-                'student_id' => $studentId,
-                'exercise_id' => $exerciseId,
-                'answer_code' => $answerCode,
-                'status' => 'completed',
-            ]);
-            $setStatus('exercise_status');
-            if ($firstSubmission) {
-                $this->learning->addXp($studentId, 20, 'Exercise Completed');
-                $this->learning->checkFirstCodeBadge($studentId);
+            if ($answerCode === '') {
+                return $back([
+                    'exercise_error' => t('Sila tulis jawapan anda sebelum menghantar latihan.', 'Please write your answer before submitting the exercise.'),
+                    'exercise_error_id' => $exerciseId,
+                ]);
             }
-            $this->learning->recalculateChapterCompletion($studentId, $id);
-            $message = $firstSubmission
-                ? t('Latihan dihantar! +20 XP', 'Exercise submitted! +20 XP')
-                : t('Jawapan dikemas kini. (XP hanya diberi untuk hantaran pertama.)', 'Answer updated. (XP is only given for the first submission.)');
+
+            $alreadyCorrect = DB::table('exercise_submissions')->where('student_id', $studentId)
+                ->where('exercise_id', $exerciseId)->where('status', 'completed')->exists();
+            $correct = exercise_answer_matches($answerCode, $exercise['expected_output']);
+
+            if (! $alreadyCorrect) {
+                DB::table('exercise_submissions')->insert([
+                    'student_id' => $studentId,
+                    'exercise_id' => $exerciseId,
+                    'answer_code' => $answerCode,
+                    'status' => $correct ? 'completed' : 'attempted',
+                ]);
+            }
+
+            if ($correct && ! $alreadyCorrect) {
+                $setStatus('exercise_status');
+                $exerciseXp = max(0, (int) $exercise['points']);
+                $this->learning->addXp($studentId, $exerciseXp, 'Exercise Completed');
+                $this->learning->checkFirstCodeBadge($studentId);
+                $this->learning->recalculateChapterCompletion($studentId, $id);
+
+                return $back(['message' => sprintf(t('Jawapan betul! Latihan selesai. +%d XP', 'Correct answer! Exercise completed. +%d XP'), $exerciseXp)]);
+            }
+
+            if (! $correct) {
+                return $back([
+                    'exercise_error' => t('Jawapan belum tepat. Bandingkan dengan Output Dijangka dan cuba lagi.', 'Not quite right. Compare with the Expected Output and try again.'),
+                    'exercise_error_id' => $exerciseId,
+                    'exercise_last_answer' => $answerCode,
+                ]);
+            }
+
+            return $back([]);
         }
         if ($request->has('submit_quiz')) {
             $quizQuestions = rows(DB::table('quizzes')->where('chapter_id', $id));
@@ -297,7 +333,7 @@ class LearningController extends Controller
             ]);
         }
 
-        return redirect()->route('student.chapter', $id)->with('message', $message);
+        return redirect()->route('student.chapter', $id)->with('message', $message)->with('active_tab', $activeTab);
     }
 
     public function certificates(Request $request)

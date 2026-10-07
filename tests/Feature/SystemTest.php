@@ -184,26 +184,29 @@ class SystemTest extends TestCase
         }
     }
 
-    public function test_submit_exercise_gives_xp(): void
+    public function test_exercise_answer_is_checked_and_correct_exercise_is_hidden(): void
     {
-        $exercise = DB::table('exercises')->where('chapter_id', 11)->value('id');
+        $exercise = DB::table('exercises')->where('chapter_id', 11)->whereNotNull('expected_output')->where('expected_output', '!=', '')->first();
         if (! $exercise) {
-            $this->markTestSkipped('Bab 11 tiada latihan.');
+            $this->markTestSkipped('Bab 11 tiada latihan dengan output dijangka.');
         }
-        DB::table('exercise_submissions')->where('student_id', self::STUDENT)->where('exercise_id', $exercise)->delete();
+        DB::table('exercise_submissions')->where('student_id', self::STUDENT)->where('exercise_id', $exercise->id)->delete();
         DB::table('users')->where('id', self::STUDENT)->update(['xp_booster_until' => null]);
-        $submit = fn () => $this->as(self::STUDENT)->post('/student/chapter/11', ['submit_exercise' => 1, 'exercise_id' => $exercise, 'answer_code' => 'echo "hi";'])
-            ->assertRedirect('/student/chapter/11');
-
+        $submit = fn (string $answer) => $this->as(self::STUDENT)->post('/student/chapter/11', ['submit_exercise' => 1, 'exercise_id' => $exercise->id, 'answer_code' => $answer]);
         $before = $this->xp(self::STUDENT);
-        $submit();
-        $this->assertSame($before + 20, $this->xp(self::STUDENT));
 
-        // Hantar semula latihan yang sama: jawapan disimpan, tetapi tiada XP tambahan
-        $submit();
-        $submit();
-        $this->assertSame($before + 20, $this->xp(self::STUDENT));
-        $this->assertSame(3, DB::table('exercise_submissions')->where('student_id', self::STUDENT)->where('exercise_id', $exercise)->count());
+        $submit('jawapan yang salah')->assertSessionHas('exercise_error')->assertSessionHas('exercise_last_answer', 'jawapan yang salah');
+        $this->assertSame($before, $this->xp(self::STUDENT));
+        $this->assertSame('attempted', DB::table('exercise_submissions')->where('student_id', self::STUDENT)->where('exercise_id', $exercise->id)->value('status'));
+        $this->as(self::STUDENT)->get('/student/chapter/11')->assertSee('id="exercise-'.$exercise->id.'"', false);
+
+        $submit(strtoupper(preg_replace('/\s+/', '', $exercise->expected_output)).'.')->assertSessionHas('message');
+        $this->assertSame($before + (int) $exercise->points, $this->xp(self::STUDENT));
+        $this->as(self::STUDENT)->get('/student/chapter/11')->assertDontSee('id="exercise-'.$exercise->id.'"', false);
+
+        $submit($exercise->expected_output);
+        $this->assertSame($before + (int) $exercise->points, $this->xp(self::STUDENT));
+        $this->assertSame(1, DB::table('exercise_submissions')->where('student_id', self::STUDENT)->where('exercise_id', $exercise->id)->where('status', 'completed')->count());
     }
 
     public function test_exercise_from_another_chapter_is_rejected(): void
@@ -225,8 +228,9 @@ class SystemTest extends TestCase
 
         foreach (['', "   \n\t "] as $answer) {
             $this->as(self::STUDENT)->post('/student/chapter/11', ['submit_exercise' => 1, 'exercise_id' => $exercise, 'answer_code' => $answer])
-                ->assertRedirect('/student/chapter/11')
-                ->assertSessionHas('exercise_error');
+                ->assertRedirectContains('/student/chapter/11')
+                ->assertSessionHas('exercise_error')
+                ->assertSessionHas('active_tab', 'exercise-tab');
         }
 
         $this->assertSame($before, DB::table('exercise_submissions')->count());

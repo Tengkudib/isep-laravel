@@ -173,3 +173,15 @@ if (! function_exists('safe_html')) {
         return $out;
     }
 }
+
+if (! function_exists('exercise_answer_matches')) {
+    function exercise_answer_matches(string $answer, ?string $expected): bool
+    {
+        $normalize = fn (string $s) => rtrim(mb_strtolower(preg_replace('/\s+/u', '', $s)), '.');
+        if (trim((string) $expected) === '') {
+            return trim($answer) !== '';
+        }
+
+        return $normalize($answer) === $normalize((string) $expected);
+    }
+}

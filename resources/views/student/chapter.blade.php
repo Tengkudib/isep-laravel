@@ -129,9 +129,6 @@
     <div class="alert alert-success border-0 shadow-sm"><i class="fas fa-check-circle me-2"></i>{{ $message }}</div>
     @endif
 
-    @if ($exercise_error)
-    <div class="alert alert-warning border-0 shadow-sm"><i class="fas fa-triangle-exclamation me-2"></i>{{ $exercise_error }}</div>
-    @endif
 
     @if ($quiz_result)
     <div class="alert {!! $quiz_result['pass'] ? 'alert-success' : 'alert-warning' !!} border-0 shadow-sm">
@@ -318,21 +315,27 @@
 
         <!-- EXERCISE -->
         <div class="tab-pane fade" id="exercise-tab">
-            @if (count($exercises) === 0)
+            @if ($total_exercises === 0)
             <div class="card-modern p-4"><p class="text-muted mb-0">{{ t('Tiada latihan untuk bab ini.', 'No exercises for this chapter.') }}</p></div>
+            @elseif (count($exercises) === 0)
+            <div class="card-modern p-4"><p class="mb-0">🎉 {{ t('Semua latihan bab ini telah dijawab dengan betul!', 'You have answered every exercise in this chapter correctly!') }}</p></div>
             @endif
             @foreach ($exercises as $ex)
-            <div class="card-modern p-4 mb-3">
+            <div class="card-modern p-4 mb-3" id="exercise-{{ $ex['id'] }}">
                 <span class="badge bg-{!! $ex['difficulty']==='Beginner'?'success':($ex['difficulty']==='Intermediate'?'warning':'danger') !!} mb-2">{!! $ex['difficulty'] !!}</span>
                 <h6 class="fw-bold">{{ $ex['question'] }}</h6>
                 <p class="text-muted small">{{ $ex['instruction'] }}</p>
                 @if ($ex['sample_input'])<p class="small"><strong>{{ t('Input Sampel:', 'Sample Input:') }}</strong> {{ $ex['sample_input'] }}</p>@endif
                 @if ($ex['expected_output'])<p class="small"><strong>{{ t('Output Dijangka:', 'Expected Output:') }}</strong> {{ $ex['expected_output'] }}</p>@endif
 
-                <form method="POST" action="{{ route('student.chapter', $chapter_id) }}" class="exercise-form">
+                @if ($exercise_error && $exercise_error_id === (int) $ex['id'])
+                <div class="alert alert-warning border-0 small py-2"><i class="fas fa-triangle-exclamation me-2"></i>{{ $exercise_error }}</div>
+                @endif
+
+                <form method="POST" action="{{ route('student.chapter', $chapter_id) }}#exercise-{{ $ex['id'] }}" class="exercise-form">
                     @csrf
                     <input type="hidden" name="exercise_id" value="{!! $ex['id'] !!}">
-                    <textarea name="answer_code" class="form-control mb-2" rows="4" required placeholder="{{ t('Tulis jawapan/kod anda di sini...', 'Write your answer/code here...') }}" style="font-family:monospace;"></textarea>
+                    <textarea name="answer_code" class="form-control mb-2" rows="4" required placeholder="{{ t('Tulis jawapan/kod anda di sini...', 'Write your answer/code here...') }}" style="font-family:monospace;">{{ $exercise_error_id === (int) $ex['id'] ? $exercise_last_answer : '' }}</textarea>
                     <div class="d-flex gap-2">
                         <button type="submit" name="submit_exercise" class="btn btn-primary btn-sm" disabled title="{{ t('Tulis jawapan dahulu', 'Write your answer first') }}">{{ t('Hantar Jawapan', 'Submit Answer') }} (+{!! $ex['points'] !!} XP)</button>
                         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#hint-{!! $ex['id'] !!}">💡 {{ t('Tunjuk Petunjuk', 'Show Hint') }}</button>
@@ -747,6 +750,14 @@ function askTutor(mode) {
 
 <script>
 // Butang "Hantar Jawapan" latihan hanya aktif bila jawapan tidak kosong
+@if ($active_tab)
+document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.querySelector('[data-bs-target="#' + {!! json_encode($active_tab) !!} + '"]');
+    if (btn && window.bootstrap) bootstrap.Tab.getOrCreateInstance(btn).show();
+    const card = {!! $exercise_error_id ? json_encode('exercise-' . $exercise_error_id) : 'null' !!};
+    if (card && document.getElementById(card)) document.getElementById(card).scrollIntoView({ block: 'center' });
+});
+@endif
 document.querySelectorAll('.exercise-form').forEach(function (form) {
     const answer = form.querySelector('textarea[name="answer_code"]');
     const submitBtn = form.querySelector('button[name="submit_exercise"]');
