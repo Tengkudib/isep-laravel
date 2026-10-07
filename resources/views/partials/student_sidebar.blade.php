@@ -57,6 +57,8 @@
         flex-shrink: 0;
     }
     .student-sidebar .profile-summary .name { color: white; font-weight: 600; font-size: 0.88rem; line-height: 1.2; text-shadow: 0 1px 3px rgba(0,0,0,0.35); }
+    .student-sidebar .profile-summary .name .name-fx-gradient,
+    .student-sidebar .profile-summary .name .name-fx-shimmer { text-shadow: none; }
     .student-sidebar .profile-summary .role { color: rgba(255,255,255,0.85); font-size: 0.75rem; text-shadow: 0 1px 3px rgba(0,0,0,0.35); }
 
     .student-sidebar nav { display: flex; flex-direction: column; gap: 4px; flex-grow: 1; }
@@ -110,7 +112,7 @@
             @endif
         </div>
         <div>
-            <div class="name">{{ $__user->name }}</div>
+            <div class="name"><span class="{{ $__cos['name_effect_class'] ?? '' }}">{{ $__user->name }}</span></div>
             @if ($__cos['title_text'])
             <div style="font-size:0.68rem; color:#D4AF37; font-weight:600;">{{ $__cos['title_text'] }}</div>
             @endif

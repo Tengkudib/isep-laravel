@@ -451,3 +451,25 @@ input[type="file"]::-webkit-file-upload-button {
     animation: isepShimmerMove 2.5s linear infinite;
 }
 @keyframes isepShimmerMove { to { background-position: 200% center; } }
+.name-fx-fire {
+    background: linear-gradient(90deg,#FF3D00,#FF9100,#FFD600,#FF9100,#FF3D00); background-size: 200% auto;
+    -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 800;
+    filter: drop-shadow(0 0 4px rgba(255,120,0,0.55));
+    animation: isepShimmerMove 1.6s linear infinite;
+}
+.name-fx-aurora {
+    background: linear-gradient(90deg,#22D3EE,#A78BFA,#F472B6,#34D399,#22D3EE); background-size: 300% auto;
+    -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 800;
+    filter: drop-shadow(0 0 5px rgba(167,139,250,0.55));
+    animation: isepShimmerMove 4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) { .name-fx-fire, .name-fx-aurora, .name-fx-shimmer { animation: none; } }
+[data-theme="dark"] .btn-outline-primary {
+    color: #F5D061 !important;
+    border-color: rgba(245,208,97,0.7) !important;
+}
+[data-theme="dark"] .btn-outline-primary:hover, [data-theme="dark"] .btn-outline-primary:focus {
+    background: #D4AF37 !important;
+    border-color: #D4AF37 !important;
+    color: #0B2545 !important;
+}

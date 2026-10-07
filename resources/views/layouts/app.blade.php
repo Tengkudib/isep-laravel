@@ -11,11 +11,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     @endunless
     @hasSection('theme_first')
-    <link rel="stylesheet" href="{{ asset('assets/theme.css') }}?v=3">
+    <link rel="stylesheet" href="{{ asset('assets/theme.css') }}?v=4">
     @endif
     @stack('styles')
     @unless (View::hasSection('theme_first'))
-    <link rel="stylesheet" href="{{ asset('assets/theme.css') }}?v=3">
+    <link rel="stylesheet" href="{{ asset('assets/theme.css') }}?v=4">
     @endunless
     @stack('styles_after')
 </head>

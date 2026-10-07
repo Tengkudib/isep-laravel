@@ -312,6 +312,16 @@ class SystemTest extends TestCase
         $this->post('/student/shop', ['buy_item' => 1, 'item_id' => 99999])->assertSessionHas('message_type', 'danger');
     }
 
+    public function test_leaderboard_podium_and_sidebar_name_effect(): void
+    {
+        DB::table('student_purchases')->insertOrIgnore(['student_id' => self::STUDENT, 'item_id' => 31]);
+        DB::table('users')->where('id', self::STUDENT)->update(['equipped_name_effect_id' => 31]);
+
+        $page = $this->as(self::STUDENT)->get('/student/leaderboard?period=overall')->assertOk();
+        $page->assertSee('class="podium"', false)->assertSee('podium-crown', false);
+        $page->assertSee('<div class="name"><span class="name-fx-shimmer">', false);
+    }
+
     public function test_only_one_xp_booster_can_be_active(): void
     {
         $this->as(self::STUDENT);
