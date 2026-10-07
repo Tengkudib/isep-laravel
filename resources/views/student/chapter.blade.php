@@ -756,17 +756,6 @@ document.querySelectorAll('.exercise-form').forEach(function (form) {
 });
 </script>
 
-<script>
-// Butang "Hantar Jawapan" latihan hanya aktif bila jawapan tidak kosong
-document.querySelectorAll('.exercise-form').forEach(function (form) {
-    const answer = form.querySelector('textarea[name="answer_code"]');
-    const submitBtn = form.querySelector('button[name="submit_exercise"]');
-    const sync = function () { submitBtn.disabled = answer.value.trim() === ''; };
-    answer.addEventListener('input', sync);
-    sync();
-});
-</script>
-
 @if (count($quizzes) > 0)
 <script>
 (function () {
