@@ -312,6 +312,24 @@ class SystemTest extends TestCase
         $this->post('/student/shop', ['buy_item' => 1, 'item_id' => 99999])->assertSessionHas('message_type', 'danger');
     }
 
+    public function test_only_one_xp_booster_can_be_active(): void
+    {
+        $this->as(self::STUDENT);
+        DB::table('users')->where('id', self::STUDENT)->update(['xp_points' => 1000, 'xp_booster_until' => null]);
+
+        $this->post('/student/shop', ['buy_item' => 1, 'item_id' => 14])->assertSessionHas('message_type', 'success');
+        $this->assertSame(850, $this->xp(self::STUDENT));
+        $this->get('/student/shop?tab=booster')->assertSee('Tunggu booster tamat');
+
+        $this->post('/student/shop', ['buy_item' => 1, 'item_id' => 15])->assertSessionHas('message_type', 'danger');
+        $this->assertSame(850, $this->xp(self::STUDENT));
+        $this->assertSame('3.0', (string) DB::table('users')->where('id', self::STUDENT)->value('xp_booster_multiplier'));
+
+        DB::table('users')->where('id', self::STUDENT)->update(['xp_booster_until' => DB::raw('NOW() - INTERVAL 1 MINUTE')]);
+        $this->post('/student/shop', ['buy_item' => 1, 'item_id' => 15])->assertSessionHas('message_type', 'success');
+        $this->assertSame(450, $this->xp(self::STUDENT));
+    }
+
     public function test_student_and_lecturer_can_submit_report(): void
     {
         $this->as(self::STUDENT)->post('/student/report', ['submit_report' => 1, 'title' => '', 'description' => ''])->assertSessionHas('error');

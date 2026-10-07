@@ -206,7 +206,16 @@ class LearningService
             return ['success' => false, 'message' => t('Item tidak dijumpai.', 'Item not found.')];
         }
 
-        $xp = DB::table('users')->where('id', $studentId)->value('xp_points');
+        $buyer = DB::table('users')->select('xp_points', 'xp_booster_until')->where('id', $studentId)->first();
+        $xp = $buyer->xp_points;
+
+        if ($item->item_type === 'booster' && $buyer->xp_booster_until && strtotime($buyer->xp_booster_until) > time()) {
+            return ['success' => false, 'message' => sprintf(
+                t('Booster anda masih aktif sehingga %s. Tunggu sehingga tamat sebelum membeli booster baharu.', 'Your booster is still active until %s. Wait until it ends before buying a new one.'),
+                date('d M, h:i A', strtotime($buyer->xp_booster_until))
+            )];
+        }
+
         if ($xp < $item->cost_xp) {
             return ['success' => false, 'message' => t('XP tidak mencukupi untuk item ini.', 'Not enough XP for this item.')];
         }

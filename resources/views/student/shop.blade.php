@@ -141,6 +141,9 @@
                         <button type="submit" name="buy_item" class="btn btn-primary btn-sm w-100" {!! $user['xp_points'] < $item['cost_xp'] ? 'disabled' : '' !!}>💎{!! $item['cost_xp'] !!} XP</button>
                     </form>
 
+                @elseif ($item['item_type'] === 'booster' && $booster_active)
+                    <button class="btn btn-secondary btn-sm w-100" disabled title="{{ t('Booster lain masih aktif', 'Another booster is still active') }}"><i class="fas fa-hourglass-half me-1"></i>{{ t('Tunggu booster tamat', 'Wait for booster to end') }}</button>
+
                 @elseif ($item['item_type'] === 'booster')
                     <form method="POST" action="{{ route('student.shop', ['tab' => $active_tab]) }}">
                         @csrf
