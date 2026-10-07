@@ -51,7 +51,7 @@
     .isep-navbar .lang-toggle-nav-btn:hover { background: rgba(255,255,255,0.2); }
 </style>
 <nav class="isep-navbar">
-    <a href="{{ route('home') }}" class="brand"><img src="{{ asset('assets/img/iSEP.png') }}" alt="iSEP" style="height:28px;"> iSEP</a>
+    <a href="{{ route('home') }}" class="brand"><img src="{{ asset('assets/img/iSEP-256.png') }}" alt="iSEP" style="height:28px;"> iSEP</a>
 
     <div class="links">
         @if ($__role === 'student')
@@ -78,7 +78,7 @@
         </button>
         <span class="role-badge {{ $__role }}">{{ $__role_label }}</span>
         <span class="text-white small d-none d-md-inline">{{ $__user->name ?? '' }}</span>
-        <a href="{{ route('logout') }}" class="logout-btn" title="{{ t('Log Keluar', 'Log Out') }}"><i class="fas fa-sign-out-alt"></i></a>
+        <a href="{{ route('logout') }}" data-logout class="logout-btn" title="{{ t('Log Keluar', 'Log Out') }}"><i class="fas fa-sign-out-alt"></i></a>
     </div>
 </nav>
 <script src="{{ asset('assets/theme-toggle.js') }}?v=3"></script>

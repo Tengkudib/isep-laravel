@@ -24,7 +24,7 @@
         <h4 class="fw-bold mb-0"><i class="fas fa-shield-alt me-2"></i>{{ t('Admin iSEP', 'iSEP Admin') }}</h4>
         <small>{{ t('Selamat kembali', 'Welcome back') }}, {{ auth()->user()->name }}</small>
     </div>
-    <a href="{{ route('logout') }}" class="btn btn-light text-primary fw-semibold"><i class="fas fa-sign-out-alt me-1"></i>{{ t('Log Keluar', 'Logout') }}</a>
+    <a href="{{ route('logout') }}" data-logout class="btn btn-light text-primary fw-semibold"><i class="fas fa-sign-out-alt me-1"></i>{{ t('Log Keluar', 'Logout') }}</a>
 </div>
 
 <div class="container-fluid p-4">

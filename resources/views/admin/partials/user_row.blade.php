@@ -13,7 +13,13 @@
                 </button>
             </form>
         </td>
-        <td class="text-center">
+        <td class="text-center text-nowrap">
+            <form method="POST" class="d-inline" onsubmit="return isepAskNewPassword(this);">
+                @csrf
+                <input type="hidden" name="id" value="{!! $u['id'] !!}">
+                <input type="hidden" name="new_password" value="">
+                <button type="submit" name="reset_password" class="btn btn-sm btn-outline-warning" title="{{ t('Tetapkan semula kata laluan', 'Reset password') }}"><i class="fas fa-key"></i></button>
+            </form>
             @if ($u['id'] != $current_user_id)
             <form method="POST" class="d-inline" onsubmit="return confirm('{{ t('Padam pengguna ini?', 'Delete this user?') }}');">
                 @csrf

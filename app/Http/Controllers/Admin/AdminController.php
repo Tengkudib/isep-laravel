@@ -278,9 +278,28 @@ class AdminController extends Controller
         }
 
         if ($request->has('toggle_status')) {
-            DB::table('users')->where('id', (int) $request->input('id'))->update(['status' => $request->input('new_status')]);
+            $newStatus = $request->input('new_status');
+            if (! in_array($newStatus, ['active', 'inactive'], true)) {
+                return back()->with('error', t('Status tidak sah.', 'Invalid status.'));
+            }
+            DB::table('users')->where('id', (int) $request->input('id'))->update(['status' => $newStatus]);
 
             return back()->with('success', t('Status pengguna dikemaskini.', 'User status updated.'));
+        }
+
+        // Tetapan semula kata laluan oleh admin (pengganti tetapan semula sendiri yang tidak selamat)
+        if ($request->has('reset_password')) {
+            $newPassword = (string) $request->input('new_password', '');
+            if (strlen($newPassword) < 6) {
+                return back()->with('error', t('Kata laluan mesti sekurang-kurangnya 6 aksara.', 'Password must be at least 6 characters.'));
+            }
+            $username = DB::table('users')->where('id', (int) $request->input('id'))->value('username');
+            if (! $username) {
+                return back()->with('error', t('Pengguna tidak dijumpai.', 'User not found.'));
+            }
+            DB::table('users')->where('id', (int) $request->input('id'))->update(['password' => password_hash($newPassword, PASSWORD_DEFAULT)]);
+
+            return back()->with('success', sprintf(t('Kata laluan %s telah ditetapkan semula.', 'Password for %s has been reset.'), $username));
         }
 
         return back();

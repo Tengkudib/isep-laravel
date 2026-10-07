@@ -171,8 +171,13 @@
             _token: CHATBOT_CSRF,
         });
 
-        fetch({!! json_encode(route('student.chatbot')) !!}, { method: 'POST', body, headers: { 'Accept': 'application/json' } })
-            .then(function (r) { return r.json(); })
+        fetch({!! json_encode(route('student.chatbot', [], false)) !!}, { method: 'POST', body, headers: { 'Accept': 'application/json' } })
+            .then(function (r) {
+                return r.json().catch(function () {
+                    // Respons bukan JSON (cth. halaman ralat 500 / timeout proksi) - tunjuk kod status untuk diagnosis
+                    return { error: {!! json_encode(t('Ralat pelayan. Sila cuba lagi.', 'Server error. Please try again.')) !!} + ' (HTTP ' + r.status + ')' };
+                });
+            })
             .then(function (data) {
                 hideTyping();
                 if (data.error) {

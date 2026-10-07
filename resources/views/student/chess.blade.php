@@ -225,10 +225,17 @@ function backToModeChoice() {
     document.getElementById('pvpLobbyPanel').style.display = 'none';
     document.getElementById('waitingPanel').style.display = 'none';
 }
+let lobbyTimer = null;
 function showPvpLobby() {
     document.getElementById('modeChoice').style.display = 'none';
     document.getElementById('pvpLobbyPanel').style.display = 'block';
     refreshLobby();
+    clearInterval(lobbyTimer);
+    // Auto-refresh lobi selagi panel lobi dipaparkan
+    lobbyTimer = setInterval(() => {
+        if (document.getElementById('pvpLobbyPanel').style.display === 'none') { clearInterval(lobbyTimer); return; }
+        refreshLobby();
+    }, 3000);
 }
 
 function refreshLobby() {
@@ -261,6 +268,10 @@ function startAiGame(diff) {
     enterGamePanel();
     renderBoard();
     updateStatus();
+    // Daftar perlawanan di pelayan sejak mula supaya tempoh permainan boleh disahkan untuk XP
+    apiPost('create', { game_type: 'chess', mode: 'ai', ai_difficulty: diff }).then(res => {
+        if (res.match && !gameOver) matchId = res.match.match_id;
+    });
 }
 
 function createPvpMatch() {
@@ -408,14 +419,18 @@ function onSquareClick(sq) {
 }
 
 function afterMove() {
-    if (checkGameOverAndReport()) return;
-
     if (mode === 'pvp') {
+        // Hantar langkah dahulu (termasuk langkah checkmate) supaya lawan nampak papan akhir, kemudian semak tamat
         const nextTurn = game.turn() === 'w' ? 'player1' : 'player2';
         apiPost('move', { match_id: matchId, board_state: game.fen(), next_turn: nextTurn }).then(res => {
             if (res.error) alert(res.error);
+            checkGameOverAndReport();
         });
-    } else if (mode === 'ai') {
+        return;
+    }
+    if (checkGameOverAndReport()) return;
+
+    if (mode === 'ai') {
         document.getElementById('turnPill').textContent = I18N.computerThinking;
         document.getElementById('turnPill').className = 'turn-pill bg-secondary text-white';
         setTimeout(makeAiMove, 500);

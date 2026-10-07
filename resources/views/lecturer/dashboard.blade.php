@@ -24,7 +24,7 @@
     </div>
     <div class="d-flex gap-2">
         <a href="{{ route('lecturer.reports') }}" class="btn btn-light text-primary fw-semibold"><i class="fas fa-chart-bar me-1"></i>{{ t('Laporan Penuh', 'Full Report') }}</a>
-        <a href="{{ route('logout') }}" class="btn btn-outline-light"><i class="fas fa-sign-out-alt me-1"></i>{{ t('Log Keluar', 'Log Out') }}</a>
+        <a href="{{ route('logout') }}" data-logout class="btn btn-outline-light"><i class="fas fa-sign-out-alt me-1"></i>{{ t('Log Keluar', 'Log Out') }}</a>
     </div>
 </div>
 

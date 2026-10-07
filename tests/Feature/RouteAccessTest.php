@@ -34,6 +34,6 @@ class RouteAccessTest extends TestCase
 
     public function test_reset_password_page_is_available(): void
     {
-        $this->get('/reset-password')->assertOk()->assertSee('Emel Berdaftar');
+        $this->get('/reset-password')->assertOk()->assertSee('pentadbir sistem');
     }
 }

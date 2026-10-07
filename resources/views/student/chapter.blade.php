@@ -91,6 +91,28 @@
             transition: transform var(--isep-duration) var(--isep-ease), box-shadow var(--isep-duration) var(--isep-ease);
         }
         .btn-quiz-start:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(212,175,55,0.45); color: white; }
+
+        /* ---- Cuba Sendiri ---- */
+        .tryit-editor { font-family: Consolas, 'Courier New', monospace; font-size: 0.9rem; background: #1e1e2f; color: #e2e2e2; border-radius: 10px; tab-size: 4; line-height: 1.5; }
+        .tryit-editor:focus { background: #1e1e2f; color: #e2e2e2; }
+        .tryit-output { background: #1e1e2f; color: #7CFC9A; border-radius: 10px; min-height: 300px; max-height: 420px; overflow: auto; font-family: Consolas, 'Courier New', monospace; font-size: 0.9rem; white-space: pre-wrap; }
+        .tryit-output.has-error { color: #ff9b9b; }
+        .tryit-preview { width: 100%; min-height: 300px; border-radius: 10px; border: 1px solid #dee2e6; background: white; }
+        .tryit-sql-table { border-collapse: collapse; color: #e2e2e2; font-size: 0.85rem; white-space: nowrap; }
+        .tryit-sql-table th, .tryit-sql-table td { border: 1px solid #3a3a55; padding: 4px 10px; }
+        .tryit-sql-table th { background: #2a2a44; color: #D4AF37; }
+        .tryit-challenge { border-left: 4px solid #D4AF37; background: rgba(212,175,55,0.10); border-radius: 10px; padding: 12px 16px; }
+        .tryit-tutor { border-top: 1px dashed rgba(107,122,143,0.4); padding-top: 16px; }
+        .tryit-tutor-output { background: rgba(19,49,92,0.06); border-radius: 10px; padding: 14px 16px; max-height: 480px; overflow: auto; }
+        .tryit-tutor-output.has-error { color: #b02a37; }
+        [data-theme="dark"] .tryit-tutor-output { background: rgba(255,255,255,0.05); }
+        [data-theme="dark"] .tryit-tutor-output.has-error { color: #ff9b9b; }
+        .tryit-md { line-height: 1.6; }
+        .tryit-md-h { font-weight: 700; margin-top: 6px; }
+        .tryit-md-li { padding-left: 12px; }
+        .tryit-md-gap { height: 8px; }
+        .tryit-md code { background: rgba(107,122,143,0.18); padding: 1px 5px; border-radius: 4px; }
+        .tryit-md-code { background: #1e1e2f; color: #e2e2e2; padding: 10px 12px; border-radius: 8px; margin: 6px 0; white-space: pre; overflow-x: auto; font-size: 0.85rem; }
     </style>
 @endpush
 
@@ -135,9 +157,8 @@
             <div class="card-modern p-4">
                 @foreach ($notes as $n)
                     <h5 class="fw-bold">{{ $n['title'] }}</h5>
-                    <div>@php
- echo $n['content']; // konten notes disimpan sebagai HTML terkawal oleh admin 
-@endphp</div>
+                    {{-- Nota ialah HTML asas daripada admin/pensyarah; safe_html() buang skrip & atribut berbahaya --}}
+                    <div>{!! safe_html($n['content']) !!}</div>
 
                     @if (!empty($n['file_path']))
 @php
@@ -212,53 +233,85 @@
         <!-- TRY IT YOURSELF -->
         @php
             $lang_slug = $chapter['language_slug'] ?? '';
-            $runs_live = in_array($lang_slug, ['python', 'javascript', 'html'], true);
             $ce = reset($code_examples);
             $default_snippets = [
                 'python'     => "name = \"iSEP\"\nprint(\"Hello, \" + name + \"!\")\nfor i in range(3):\n    print(\"Baris\", i)",
                 'javascript' => "const name = \"iSEP\";\nconsole.log(\"Hello, \" + name + \"!\");\nfor (let i = 0; i < 3; i++) {\n  console.log(\"Baris\", i);\n}",
                 'html'       => "<h2 style=\"color:#13315C;\">Hello, iSEP!</h2>\n<p>Ubah suai HTML ini dan lihat pratonton di sebelah.</p>",
+                'java'       => "public class Main {\n    public static void main(String[] args) {\n        String name = \"iSEP\";\n        System.out.println(\"Hello, \" + name + \"!\");\n        for (int i = 0; i < 3; i++) {\n            System.out.println(\"Baris \" + i);\n        }\n    }\n}",
+                'php'        => "<?php\n\$name = \"iSEP\";\necho \"Hello, \$name!\\n\";\nfor (\$i = 0; \$i < 3; \$i++) {\n    echo \"Baris \$i\\n\";\n}",
+                'mysql'      => "CREATE TABLE pelajar (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    nama VARCHAR(50),\n    markah INT\n);\n\nINSERT INTO pelajar (nama, markah) VALUES\n    ('Ali', 85), ('Siti', 92), ('John', 78);\n\nSELECT nama, markah FROM pelajar WHERE markah > 80 ORDER BY markah DESC;",
             ];
-            $editor_prefill = $ce['code_example'] ?? ($default_snippets[$lang_slug] ?? '# Tulis kod anda di sini');
-        
-@endphp
+            $editor_prefill = $ce['code_example'] ?? ($default_snippets[$lang_slug] ?? '');
+            $tryit_intro = [
+                'python'     => t('Kod Python dijalankan BENAR-BENAR dalam pelayar anda (Pyodide). Guna print() untuk papar output.', 'Python code actually runs in your browser (Pyodide). Use print() to display output.'),
+                'javascript' => t('Kod JavaScript dijalankan dalam ruang selamat (sandbox) di pelayar anda. Guna console.log() untuk papar output.', 'JavaScript code runs in a sandbox in your browser. Use console.log() to display output.'),
+                'html'       => t('Ubah suai HTML dan tekan "Jalankan Kod" untuk lihat pratonton langsung.', 'Edit the HTML and press "Run Code" to see a live preview.'),
+                'java'       => t('Kod Java dikompil dan dijalankan di pelayan (JDK 17). Kelas utama anda perlu ada kaedah main().', 'Java code is compiled and run on the server (JDK 17). Your main class needs a main() method.'),
+                'php'        => t('Kod PHP dijalankan di pelayan (PHP 8.3). Mulakan dengan <?php dan guna echo untuk papar output.', 'PHP code runs on the server (PHP 8.3). Start with <?php and use echo to display output.'),
+                'mysql'      => t('SQL dijalankan dalam pangkalan data latihan di pelayar anda - setiap larian bermula dengan pangkalan data kosong, jadi sertakan CREATE TABLE dan INSERT. (Enjin SQLite, serasi dengan asas MySQL.)', 'SQL runs in a practice database in your browser - every run starts empty, so include CREATE TABLE and INSERT. (SQLite engine, compatible with MySQL basics.)'),
+            ][$lang_slug] ?? '';
+        @endphp
         <div class="tab-pane fade" id="tryit-tab">
             <div class="card-modern p-4">
-                @if ($lang_slug === 'python')
-                    <p class="text-muted">{{ t('Tulis kod Python di bawah dan tekan "Jalankan Kod" - kod ini dijalankan BENAR-BENAR dalam pelayar anda (Pyodide), tiada apa-apa dihantar ke pelayan.', 'Write Python code below and press "Run Code" - this code actually runs in your browser (Pyodide), nothing is sent to the server.') }}</p>
-                @elseif ($lang_slug === 'javascript')
-                    <p class="text-muted">{{ t('Tulis kod JavaScript di bawah dan tekan "Jalankan Kod" - guna console.log() untuk papar output. Kod dijalankan dalam ruang selamat (sandbox) di pelayar anda sahaja.', 'Write JavaScript code below and press "Run Code" - use console.log() to display output. The code runs in a sandbox in your browser only.') }}</p>
-                @elseif ($lang_slug === 'html')
-                    <p class="text-muted">{{ t('Ubah suai kod HTML di bawah dan tekan "Jalankan Kod" untuk lihat pratonton langsung di sebelah kanan.', 'Modify the HTML code below and press "Run Code" to see a live preview on the right.') }}</p>
-                @else
-                    <p class="text-muted">{{ t('Ubah suai kod di bawah dan fahami bagaimana ia berfungsi (simulasi - pelaksana kod sebenar untuk', 'Modify the code below and understand how it works (simulation - real code execution for') }} {{ $chapter['language_name'] }} {{ t('belum disokong dalam pelayar).', 'is not yet supported in the browser).') }}</p>
-                @endif
+                <p class="text-muted mb-3">{{ $tryit_intro }}</p>
+
+                <!-- Cabaran semasa daripada AI Tutor -->
+                <div id="tryitChallengeBox" class="tryit-challenge mb-3" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong><i class="fas fa-bullseye me-1"></i>{{ t('Cabaran Anda', 'Your Challenge') }}</strong>
+                        <button type="button" class="btn btn-sm btn-link text-muted p-0" onclick="clearChallenge()">{{ t('Tutup', 'Dismiss') }}</button>
+                    </div>
+                    <div id="tryitChallengeText" class="tryit-md"></div>
+                </div>
 
                 <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">{{ t('Editor Kod', 'Code Editor') }}</label>
-                        <textarea id="tryitEditor" class="form-control" rows="10" style="font-family:monospace;background:#1e1e2f;color:#e2e2e2;">{{ $editor_prefill }}</textarea>
-                        <button type="button" id="tryitRunBtn" class="btn btn-sm btn-primary mt-2" onclick="runTryItCode()"><i class="fas fa-play me-1"></i>{{ t('Jalankan Kod', 'Run Code') }}</button>
-                        <span id="tryitLoadingNote" class="text-muted small ms-2" style="display:none;">{{ t('Memuatkan pelaksana Python (Pyodide)... sekali sahaja, mungkin ambil beberapa saat.', 'Loading the Python runtime (Pyodide)... one time only, may take a few seconds.') }}</span>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">{!! $lang_slug === 'html' ? t('Pratonton', 'Preview') : t('Output', 'Output') !!}</label>
-                        <div id="tryitOutput" class="p-3" style="background:#1e1e2f;color:#0f0;border-radius:10px;min-height:220px;font-family:monospace;white-space:pre-wrap;@php
- echo $lang_slug === 'html' ? 'display:none;' : ''; 
-@endphp">
-                            @if ($runs_live)&gt; {{ t('Tekan "Jalankan Kod" untuk lihat hasilnya di sini.', 'Press "Run Code" to see the result here.') }}@else&gt; {{ t('Output akan dipaparkan di sini selepas API pelaksana kod disambungkan.', 'Output will be displayed here once the code execution API is connected.') }}@endif
+                    <div class="col-lg-6">
+                        <label class="form-label fw-semibold d-flex justify-content-between align-items-center">
+                            <span>{{ t('Editor Kod', 'Code Editor') }} <span class="badge bg-light text-dark border ms-1">{{ $chapter['language_name'] }}</span></span>
+                            <button type="button" class="btn btn-sm btn-link text-muted p-0" onclick="resetTryItCode()" title="{{ t('Kembalikan kod asal', 'Restore original code') }}"><i class="fas fa-rotate-left me-1"></i>{{ t('Set Semula', 'Reset') }}</button>
+                        </label>
+                        <textarea id="tryitEditor" class="form-control tryit-editor" rows="14" spellcheck="false">{{ $editor_prefill }}</textarea>
+                        @if (in_array($lang_slug, ['java', 'php'], true))
+                        <details class="mt-2">
+                            <summary class="small text-muted">{{ t('Input program (stdin) - pilihan', 'Program input (stdin) - optional') }}</summary>
+                            <textarea id="tryitStdin" class="form-control form-control-sm mt-1 tryit-editor" rows="2" spellcheck="false" placeholder="{{ t('Satu nilai setiap baris, untuk Scanner / fgets(STDIN)', 'One value per line, for Scanner / fgets(STDIN)') }}"></textarea>
+                        </details>
+                        @endif
+                        <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+                            <button type="button" id="tryitRunBtn" class="btn btn-sm btn-primary" onclick="runTryItCode()"><i class="fas fa-play me-1"></i>{{ t('Jalankan Kod', 'Run Code') }}</button>
+                            <small class="text-muted">Ctrl + Enter</small>
+                            <span id="tryitLoadingNote" class="text-muted small" style="display:none;"></span>
                         </div>
-                        <iframe id="tryitPreviewFrame" sandbox="allow-scripts" style="width:100%;min-height:220px;border-radius:10px;border:1px solid #dee2e6;background:white;@php
- echo $lang_slug === 'html' ? '' : 'display:none;'; 
-@endphp"></iframe>
+                    </div>
+                    <div class="col-lg-6">
+                        <label class="form-label fw-semibold">{{ $lang_slug === 'html' ? t('Pratonton', 'Preview') : t('Output', 'Output') }}</label>
+                        <div id="tryitOutput" class="tryit-output p-3" @if ($lang_slug === 'html') style="display:none;" @endif>&gt; {{ t('Tekan "Jalankan Kod" untuk lihat hasilnya di sini.', 'Press "Run Code" to see the result here.') }}</div>
+                        <iframe id="tryitPreviewFrame" sandbox="allow-scripts" class="tryit-preview" @if ($lang_slug !== 'html') style="display:none;" @endif></iframe>
                         <iframe id="tryitJsRunner" sandbox="allow-scripts" style="display:none;"></iframe>
                     </div>
                 </div>
+
+                <!-- AI Tutor: mengajar pelajar memahami & menulis kod -->
+                <div class="tryit-tutor mt-4">
+                    <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+                        <strong class="me-2"><i class="fas fa-robot me-1"></i>{{ t('Belajar dengan AI Tutor', 'Learn with the AI Tutor') }}</strong>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-assist="explain" onclick="askTutor('explain')">💡 {{ t('Terangkan Kod', 'Explain Code') }}</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-assist="challenge" onclick="askTutor('challenge')">🎯 {{ t('Beri Saya Cabaran', 'Give Me a Challenge') }}</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-assist="review" onclick="askTutor('review')">✅ {{ t('Semak Kod Saya', 'Check My Code') }}</button>
+                    </div>
+                    <small class="text-muted d-block mb-2">{{ t('Terangkan: fahami kod baris demi baris. Cabaran: dapatkan latihan kecil untuk tajuk ini. Semak: dapatkan maklum balas & petunjuk (bukan jawapan penuh).', 'Explain: understand the code line by line. Challenge: get a small exercise for this topic. Check: get feedback & hints (not the full answer).') }}</small>
+                    <div id="tryitTutorOutput" class="tryit-md tryit-tutor-output" style="display:none;"></div>
+                </div>
+
                 <form method="POST" action="{{ route('student.chapter', $chapter_id) }}" class="mt-3">
                     @csrf
-                    <button type="submit" name="mark_try_it" class="btn btn-outline-primary btn-sm" {!! $progress['try_it_status']==='completed'?'disabled':'' !!}>
+                    <button type="submit" id="tryitMarkBtn" name="mark_try_it" class="btn btn-outline-primary btn-sm" {!! $progress['try_it_status']==='completed' ? 'disabled' : 'disabled data-needs-run="1"' !!}>
                         {!! $progress['try_it_status']==='completed' ? '✅ ' . t('Aktiviti Selesai', 'Activity Complete') : t('Tandakan Selesai', 'Mark as Complete') !!}
                     </button>
+                    @if ($progress['try_it_status'] !== 'completed')
+                    <small id="tryitMarkHint" class="text-muted ms-2">{{ t('Jalankan kod anda sekurang-kurangnya sekali untuk menandakan selesai.', 'Run your code at least once to mark this complete.') }}</small>
+                    @endif
                 </form>
             </div>
         </div>
@@ -383,61 +436,121 @@
 
 @if ($lang_slug === 'python')
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+@elseif ($lang_slug === 'mysql')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 @endif
 <script>
 const TRYIT_LANG = {!! json_encode($lang_slug) !!};
+const TRYIT_CHAPTER_ID = {{ (int) $chapter_id }};
+const TRYIT_CSRF = {!! json_encode(csrf_token()) !!};
+const TRYIT_RUN_URL = {!! json_encode(route('student.code.run', [], false)) !!};
+const TRYIT_ASSIST_URL = {!! json_encode(route('student.code.assist', [], false)) !!};
+const TRYIT_ORIGINAL_CODE = document.getElementById('tryitEditor').value;
 let pyodideReadyPromise = null;
+let sqlReadyPromise = null;
+let tryitLastOutput = '';
+let tryitChallenge = '';
 
-// UI text (server-rendered, translated) used by the try-it runner below — execution logic itself is untouched.
 const TRYIT_I18N = {
-    notSupported: {!! json_encode(t('> Pelaksana kod sebenar belum disokong untuk bahasa ini dalam pelayar.', '> Real code execution is not supported for this language in the browser.')) !!},
     running: {!! json_encode(t('Menjalankan kod...', 'Running code...')) !!},
     errorPrefix: {!! json_encode(t('Ralat: ', 'Error: ')) !!},
     warnPrefix: {!! json_encode(t('Amaran: ', 'Warning: ')) !!},
     noOutputPrint: {!! json_encode(t('(Tiada output - guna print() untuk papar sesuatu)', '(No output - use print() to display something)')) !!},
-    pyodideLoadFail: {!! json_encode(t('Gagal memuatkan pelaksana Python: ', 'Failed to load the Python runtime: ')) !!},
-    noOutputConsoleLog: {!! json_encode(t('(Tiada output - guna console.log() untuk papar sesuatu)', '(No output - use console.log() to display something)')) !!}
+    noOutputConsoleLog: {!! json_encode(t('(Tiada output - guna console.log() untuk papar sesuatu)', '(No output - use console.log() to display something)')) !!},
+    noOutputGeneric: {!! json_encode(t('(Program selesai tanpa output)', '(Program finished with no output)')) !!},
+    loadingPython: {!! json_encode(t('Memuatkan pelaksana Python... sekali sahaja, mungkin ambil beberapa saat.', 'Loading the Python runtime... one time only, may take a few seconds.')) !!},
+    loadingSql: {!! json_encode(t('Memuatkan pangkalan data latihan...', 'Loading the practice database...')) !!},
+    runtimeLoadFail: {!! json_encode(t('Gagal memuatkan pelaksana kod: ', 'Failed to load the code runtime: ')) !!},
+    compileError: {!! json_encode(t('Ralat kompilasi:', 'Compilation error:')) !!},
+    connError: {!! json_encode(t('Ralat sambungan. Sila cuba lagi.', 'Connection error. Please try again.')) !!},
+    sqlOk: {!! json_encode(t('Pernyataan berjaya dijalankan (tiada baris untuk dipaparkan).', 'Statements ran successfully (no rows to display).')) !!},
+    sqlRows: {!! json_encode(t('baris', 'row(s)')) !!},
+    thinking: {!! json_encode(t('AI Tutor sedang berfikir...', 'The AI Tutor is thinking...')) !!},
+    confirmReset: {!! json_encode(t('Kembalikan kod asal? Perubahan anda akan hilang.', 'Restore the original code? Your changes will be lost.')) !!},
+    challengeLoaded: {!! json_encode(t('Cabaran telah ditambah di atas editor. Tulis penyelesaian anda, jalankan, kemudian tekan "Semak Kod Saya".', 'The challenge has been added above the editor. Write your solution, run it, then press "Check My Code".')) !!}
 };
 
-function runTryItCode() {
-    if (TRYIT_LANG === 'python') runPythonCode();
-    else if (TRYIT_LANG === 'javascript') runJsCode();
-    else if (TRYIT_LANG === 'html') runHtmlPreview();
-    else {
-        const out = document.getElementById('tryitOutput');
-        if (out) out.textContent = TRYIT_I18N.notSupported;
+// ---------------- Editor: Tab = 4 ruang, Ctrl+Enter = jalankan ----------------
+document.getElementById('tryitEditor').addEventListener('keydown', function (e) {
+    if (e.key === 'Tab' && !e.shiftKey) {
+        e.preventDefault();
+        const s = this.selectionStart, end = this.selectionEnd;
+        this.value = this.value.slice(0, s) + '    ' + this.value.slice(end);
+        this.selectionStart = this.selectionEnd = s + 4;
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        runTryItCode();
     }
+});
+
+function resetTryItCode() {
+    if (!confirm(TRYIT_I18N.confirmReset)) return;
+    document.getElementById('tryitEditor').value = TRYIT_ORIGINAL_CODE;
+}
+
+function setOutput(text, isError) {
+    const out = document.getElementById('tryitOutput');
+    out.textContent = text;
+    out.classList.toggle('has-error', !!isError);
+    tryitLastOutput = text;
+}
+
+// Butang "Tandakan Selesai" hanya aktif selepas pelajar menjalankan kod sekurang-kurangnya sekali
+function markRanOnce() {
+    const btn = document.getElementById('tryitMarkBtn');
+    if (btn && btn.dataset.needsRun) {
+        btn.disabled = false;
+        delete btn.dataset.needsRun;
+        const hint = document.getElementById('tryitMarkHint');
+        if (hint) hint.remove();
+    }
+}
+
+function runTryItCode() {
+    const runners = { python: runPythonCode, javascript: runJsCode, html: runHtmlPreview, mysql: runSqlCode, java: runServerCode, php: runServerCode };
+    const fn = runners[TRYIT_LANG];
+    if (fn) { fn(); markRanOnce(); }
+}
+
+// Buang baris dalaman Pyodide daripada traceback - pelajar hanya perlu nampak baris kod mereka sendiri
+function cleanPythonTraceback(msg) {
+    const lines = msg.split('\n');
+    const first = lines.findIndex((l) => l.includes('File "<exec>"'));
+    return first === -1 ? msg : 'Traceback (most recent call last):\n' + lines.slice(first).join('\n');
 }
 
 async function runPythonCode() {
     const code = document.getElementById('tryitEditor').value;
-    const outEl = document.getElementById('tryitOutput');
     const runBtn = document.getElementById('tryitRunBtn');
     const loadingNote = document.getElementById('tryitLoadingNote');
 
     runBtn.disabled = true;
     try {
         if (!pyodideReadyPromise) {
+            loadingNote.textContent = TRYIT_I18N.loadingPython;
             loadingNote.style.display = 'inline';
             pyodideReadyPromise = loadPyodide();
         }
-        outEl.textContent = TRYIT_I18N.running;
+        setOutput(TRYIT_I18N.running);
         const pyodide = await pyodideReadyPromise;
         loadingNote.style.display = 'none';
 
         let buffer = '';
+        let failed = false;
         pyodide.setStdout({ batched: (s) => { buffer += s + '\n'; } });
         pyodide.setStderr({ batched: (s) => { buffer += s + '\n'; } });
 
         try {
             await pyodide.runPythonAsync(code);
         } catch (err) {
-            buffer += TRYIT_I18N.errorPrefix + (err.message || err);
+            failed = true;
+            buffer += TRYIT_I18N.errorPrefix + cleanPythonTraceback(String(err.message || err));
         }
-        outEl.textContent = buffer || TRYIT_I18N.noOutputPrint;
+        setOutput(buffer || TRYIT_I18N.noOutputPrint, failed);
     } catch (err) {
         loadingNote.style.display = 'none';
-        outEl.textContent = TRYIT_I18N.pyodideLoadFail + (err.message || err);
+        pyodideReadyPromise = null;
+        setOutput(TRYIT_I18N.runtimeLoadFail + (err.message || err), true);
     } finally {
         runBtn.disabled = false;
     }
@@ -445,39 +558,202 @@ async function runPythonCode() {
 
 function runJsCode() {
     const code = document.getElementById('tryitEditor').value.replace(/<\/script/gi, '<\\/script');
-    const outEl = document.getElementById('tryitOutput');
     const frame = document.getElementById('tryitJsRunner');
-    outEl.textContent = TRYIT_I18N.running;
+    setOutput(TRYIT_I18N.running);
 
     const jsErrorPrefix = JSON.stringify(TRYIT_I18N.errorPrefix);
     const jsWarnPrefix = JSON.stringify(TRYIT_I18N.warnPrefix);
     const doc = '<script>' +
-        'const __logs = [];' +
+        'const __logs = []; let __err = false;' +
         'function __fmt(a) { try { return typeof a === "object" ? JSON.stringify(a) : String(a); } catch (e) { return String(a); } }' +
         'console.log = function() { __logs.push(Array.prototype.map.call(arguments, __fmt).join(" ")); };' +
         'console.error = function() { __logs.push(' + jsErrorPrefix + ' + Array.prototype.map.call(arguments, __fmt).join(" ")); };' +
         'console.warn = function() { __logs.push(' + jsWarnPrefix + ' + Array.prototype.map.call(arguments, __fmt).join(" ")); };' +
-        'window.onerror = function(msg) { __logs.push(' + jsErrorPrefix + ' + msg); parent.postMessage({ type: "tryitJsOutput", logs: __logs }, "*"); };' +
-        'try {' + code + '} catch (e) { __logs.push(' + jsErrorPrefix + ' + e.message); }' +
-        'parent.postMessage({ type: "tryitJsOutput", logs: __logs }, "*");' +
+        'window.onerror = function(msg) { __logs.push(' + jsErrorPrefix + ' + msg); parent.postMessage({ type: "tryitJsOutput", logs: __logs, error: true }, "*"); };' +
+        'try {' + code + '} catch (e) { __err = true; __logs.push(' + jsErrorPrefix + ' + e.message); }' +
+        'parent.postMessage({ type: "tryitJsOutput", logs: __logs, error: __err }, "*");' +
         '<\/script>';
     frame.srcdoc = doc;
 }
 
 window.addEventListener('message', function (e) {
     if (e.data && e.data.type === 'tryitJsOutput') {
-        const outEl = document.getElementById('tryitOutput');
-        outEl.textContent = e.data.logs.length ? e.data.logs.join('\n') : TRYIT_I18N.noOutputConsoleLog;
+        setOutput(e.data.logs.length ? e.data.logs.join('\n') : TRYIT_I18N.noOutputConsoleLog, e.data.error);
     }
 });
 
 function runHtmlPreview() {
     const code = document.getElementById('tryitEditor').value;
     document.getElementById('tryitPreviewFrame').srcdoc = code;
+    tryitLastOutput = '(HTML preview rendered)';
 }
 @if ($lang_slug === 'html')
 document.addEventListener('DOMContentLoaded', runHtmlPreview);
 @endif
+
+// ---------------- MySQL: pangkalan data latihan SQLite (sql.js) dalam pelayar ----------------
+function mysqlToSqlite(sql) {
+    return sql
+        // INT AUTO_INCREMENT PRIMARY KEY -> INTEGER PRIMARY KEY AUTOINCREMENT
+        .replace(/\b(?:BIG|SMALL|TINY|MEDIUM)?INT(?:EGER)?(?:\s*\(\s*\d+\s*\))?(?:\s+UNSIGNED)?(?:\s+NOT\s+NULL)?\s+AUTO_INCREMENT\s+PRIMARY\s+KEY/gi, 'INTEGER PRIMARY KEY AUTOINCREMENT')
+        .replace(/\s+AUTO_INCREMENT\b(?!\s*=)/gi, '')
+        .replace(/\)\s*(?:ENGINE|DEFAULT\s+CHARSET|AUTO_INCREMENT)\s*=[^;]*;/gi, ');')
+        .replace(/\s+UNSIGNED\b/gi, '')
+        .replace(/`/g, '"');
+}
+
+function renderSqlResults(results) {
+    const out = document.getElementById('tryitOutput');
+    out.classList.remove('has-error');
+    if (!results.length) { setOutput(TRYIT_I18N.sqlOk); return; }
+    out.innerHTML = '';
+    const summary = [];
+    for (const res of results) {
+        const table = document.createElement('table');
+        table.className = 'tryit-sql-table';
+        const head = table.createTHead().insertRow();
+        res.columns.forEach((c) => { const th = document.createElement('th'); th.textContent = c; head.appendChild(th); });
+        const body = table.createTBody();
+        res.values.forEach((row) => {
+            const tr = body.insertRow();
+            row.forEach((v) => { tr.insertCell().textContent = v === null ? 'NULL' : v; });
+        });
+        const caption = document.createElement('div');
+        caption.className = 'small text-muted mt-2';
+        caption.textContent = res.values.length + ' ' + TRYIT_I18N.sqlRows;
+        out.appendChild(table);
+        out.appendChild(caption);
+        summary.push(res.columns.join(' | ') + '\n' + res.values.map((r) => r.join(' | ')).join('\n'));
+    }
+    tryitLastOutput = summary.join('\n\n');
+}
+
+async function runSqlCode() {
+    const runBtn = document.getElementById('tryitRunBtn');
+    const loadingNote = document.getElementById('tryitLoadingNote');
+    runBtn.disabled = true;
+    try {
+        if (!sqlReadyPromise) {
+            loadingNote.textContent = TRYIT_I18N.loadingSql;
+            loadingNote.style.display = 'inline';
+            sqlReadyPromise = initSqlJs({ locateFile: (f) => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/' + f });
+        }
+        setOutput(TRYIT_I18N.running);
+        const SQL = await sqlReadyPromise;
+        loadingNote.style.display = 'none';
+        const db = new SQL.Database();
+        try {
+            renderSqlResults(db.exec(mysqlToSqlite(document.getElementById('tryitEditor').value)));
+        } catch (err) {
+            setOutput(TRYIT_I18N.errorPrefix + (err.message || err), true);
+        } finally {
+            db.close();
+        }
+    } catch (err) {
+        loadingNote.style.display = 'none';
+        sqlReadyPromise = null;
+        setOutput(TRYIT_I18N.runtimeLoadFail + (err.message || err), true);
+    } finally {
+        runBtn.disabled = false;
+    }
+}
+
+// ---------------- Java & PHP: dijalankan di pelayan ----------------
+function postForm(url, params) {
+    const body = new URLSearchParams({ _token: TRYIT_CSRF, ...params });
+    return fetch(url, { method: 'POST', body, headers: { 'Accept': 'application/json' } })
+        .then((r) => r.json().catch(() => ({ error: TRYIT_I18N.connError + ' (HTTP ' + r.status + ')' })));
+}
+
+function runServerCode() {
+    const runBtn = document.getElementById('tryitRunBtn');
+    const stdinEl = document.getElementById('tryitStdin');
+    runBtn.disabled = true;
+    setOutput(TRYIT_I18N.running);
+    postForm(TRYIT_RUN_URL, {
+        language: TRYIT_LANG,
+        code: document.getElementById('tryitEditor').value,
+        stdin: stdinEl ? stdinEl.value : '',
+    }).then((res) => {
+        if (res.error) { setOutput(res.error, true); return; }
+        if (res.compile_output) { setOutput(TRYIT_I18N.compileError + '\n' + res.compile_output, true); return; }
+        let text = res.stdout || '';
+        if (res.stderr) text += (text ? '\n' : '') + res.stderr;
+        if (!res.ok && res.status) text += (text ? '\n' : '') + '[' + res.status + ']';
+        setOutput(text || TRYIT_I18N.noOutputGeneric, !res.ok);
+    }).catch(() => setOutput(TRYIT_I18N.connError, true))
+      .finally(() => { runBtn.disabled = false; });
+}
+
+// ---------------- AI Tutor: terangkan, beri cabaran, semak ----------------
+function escapeHtmlTryit(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+// Penukar Markdown ringkas (teks di-escape dahulu, jadi selamat daripada HTML berbahaya)
+function renderMarkdown(md) {
+    const blocks = [];
+    let html = escapeHtmlTryit(md).replace(/```[\w+-]*\n?([\s\S]*?)```/g, (_, code) => {
+        blocks.push('<pre class="tryit-md-code">' + code.replace(/\n$/, '') + '</pre>');
+        return '\u0000' + (blocks.length - 1) + '\u0000';
+    });
+    html = html
+        .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/^#{1,6}\s+(.+)$/gm, '<div class="tryit-md-h">$1</div>')
+        .replace(/^\s*[-*]\s+(.+)$/gm, '<div class="tryit-md-li">• $1</div>')
+        .replace(/^\s*(\d+)\.\s+(.+)$/gm, '<div class="tryit-md-li">$1. $2</div>')
+        .replace(/\n{2,}/g, '<div class="tryit-md-gap"></div>')
+        .replace(/\n/g, '<br>');
+    return html.replace(/\u0000(\d+)\u0000/g, (_, i) => blocks[+i]);
+}
+
+function setChallenge(text) {
+    tryitChallenge = text;
+    document.getElementById('tryitChallengeText').innerHTML = renderMarkdown(text);
+    document.getElementById('tryitChallengeBox').style.display = text ? 'block' : 'none';
+}
+function clearChallenge() { setChallenge(''); }
+
+function askTutor(mode) {
+    const out = document.getElementById('tryitTutorOutput');
+    const buttons = document.querySelectorAll('[data-assist]');
+    buttons.forEach((b) => { b.disabled = true; });
+    out.style.display = 'block';
+    out.classList.remove('has-error');
+    out.textContent = TRYIT_I18N.thinking;
+
+    postForm(TRYIT_ASSIST_URL, {
+        mode,
+        chapter_id: String(TRYIT_CHAPTER_ID),
+        code: document.getElementById('tryitEditor').value,
+        output: tryitLastOutput,
+        challenge: tryitChallenge,
+    }).then((res) => {
+        if (res.error) { out.classList.add('has-error'); out.textContent = res.error; return; }
+        if (mode === 'challenge') {
+            setChallenge(res.reply);
+            out.textContent = TRYIT_I18N.challengeLoaded;
+            document.getElementById('tryitChallengeBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            out.innerHTML = renderMarkdown(res.reply);
+        }
+    }).catch(() => { out.classList.add('has-error'); out.textContent = TRYIT_I18N.connError; })
+      .finally(() => { buttons.forEach((b) => { b.disabled = false; }); });
+}
+</script>
+
+<script>
+// Butang "Hantar Jawapan" latihan hanya aktif bila jawapan tidak kosong
+document.querySelectorAll('.exercise-form').forEach(function (form) {
+    const answer = form.querySelector('textarea[name="answer_code"]');
+    const submitBtn = form.querySelector('button[name="submit_exercise"]');
+    const sync = function () { submitBtn.disabled = answer.value.trim() === ''; };
+    answer.addEventListener('input', sync);
+    sync();
+});
 </script>
 
 <script>

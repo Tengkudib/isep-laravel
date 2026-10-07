@@ -99,7 +99,7 @@
 </style>
 
 <aside class="student-sidebar" style="background: {!! $__sidebar_bg !!};">
-    <a href="{{ route('home') }}" class="brand"><img src="{{ asset('assets/img/iSEP.png') }}" alt="iSEP"> iSEP</a>
+    <a href="{{ route('home') }}" class="brand"><img src="{{ asset('assets/img/iSEP-256.png') }}" alt="iSEP"> iSEP</a>
 
     <a href="{{ route('student.profile') }}" class="profile-summary">
         <div class="profile-avatar" style="{{ $__border_style ? 'background:' . $__border_style . '; padding:3px;' : '' }}">
@@ -134,7 +134,7 @@
     </button>
     <button type="button" class="lang-toggle-btn" onclick="toggleIsepLang()"><i class="fas fa-globe"></i> {{ current_lang() === 'en' ? 'Bahasa Melayu' : 'English' }}</button>
 
-    <a href="{{ route('logout') }}" class="logout-link"><i class="fas fa-sign-out-alt"></i>{{ t('Log Keluar', 'Log Out') }}</a>
+    <a href="{{ route('logout') }}" data-logout class="logout-link"><i class="fas fa-sign-out-alt"></i>{{ t('Log Keluar', 'Log Out') }}</a>
 </aside>
 <script src="{{ asset('assets/theme-toggle.js') }}?v=3"></script>
 @include('partials.chatbot')
