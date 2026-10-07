@@ -136,6 +136,47 @@ class LearningService
 
         DB::table('users')->where('id', $studentId)->increment('xp_points', $amount);
         DB::table('xp_log')->insert(['student_id' => $studentId, 'amount' => $amount, 'reason' => $reason]);
+
+        if ($amount > 0) {
+            $this->grantLevelRewards($studentId);
+        }
+    }
+
+    public const XP_PER_LEVEL = 500;
+
+    public function levelFromXp(int $totalXpEarned): int
+    {
+        return intdiv(max(0, $totalXpEarned), self::XP_PER_LEVEL) + 1;
+    }
+
+    public function xpForLevel(int $level): int
+    {
+        return max(0, $level - 1) * self::XP_PER_LEVEL;
+    }
+
+    public function getLevelRewards(): array
+    {
+        return rows(DB::table('shop_items')->whereNotNull('unlock_level')->orderBy('unlock_level')->orderBy('sort_order')->orderBy('id'));
+    }
+
+    public function grantLevelRewards(int $studentId): array
+    {
+        $level = $this->levelFromXp($this->getTotalXpEarned($studentId));
+        $new = rows(DB::table('shop_items as si')->select('si.id', 'si.name', 'si.unlock_level')
+            ->whereNotNull('si.unlock_level')->where('si.unlock_level', '<=', $level)
+            ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('student_purchases as sp')
+                ->whereColumn('sp.item_id', 'si.id')->where('sp.student_id', $studentId))
+            ->orderBy('si.unlock_level'));
+
+        foreach ($new as $item) {
+            DB::table('student_purchases')->insert(['student_id' => $studentId, 'item_id' => $item['id']]);
+        }
+
+        if ($new && session()->isStarted() && (int) auth()->id() === $studentId) {
+            session()->put('new_level_rewards', array_merge(session('new_level_rewards', []), $new));
+        }
+
+        return $new;
     }
 
     /**
@@ -204,6 +245,13 @@ class LearningService
         $item = DB::table('shop_items')->where('id', $itemId)->first();
         if (! $item) {
             return ['success' => false, 'message' => t('Item tidak dijumpai.', 'Item not found.')];
+        }
+
+        if ($item->unlock_level !== null) {
+            return ['success' => false, 'message' => sprintf(
+                t('%s ialah ganjaran Level %d dan tidak boleh dibeli. Ia diberi secara automatik apabila anda mencapai level itu.', '%s is a Level %d reward and cannot be bought. It is given automatically when you reach that level.'),
+                $item->name, $item->unlock_level
+            )];
         }
 
         $buyer = DB::table('users')->select('xp_points', 'xp_booster_until')->where('id', $studentId)->first();

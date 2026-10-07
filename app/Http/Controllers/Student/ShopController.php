@@ -15,6 +15,7 @@ class ShopController extends Controller
     public function show(Request $request)
     {
         $studentId = (int) $request->user()->id;
+        app(LearningService::class)->grantLevelRewards($studentId);
         $user = row(DB::table('users')->where('id', $studentId));
 
         $byType = [];

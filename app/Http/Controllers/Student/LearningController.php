@@ -32,8 +32,14 @@ class LearningController extends Controller
         $xpGame = mb_substr(trim((string) $request->query('xp_game', '')), 0, 40);
 
         // Level dikira dari jumlah XP yang PERNAH diperoleh (bukan baki xp_points)
+        $this->learning->grantLevelRewards($studentId);
+        $newLevelRewards = session()->pull('new_level_rewards', []);
         $totalXpEarned = $this->learning->getTotalXpEarned($studentId);
-        $xpPerLevel = 500;
+        $xpPerLevel = LearningService::XP_PER_LEVEL;
+        $level = $this->learning->levelFromXp($totalXpEarned);
+        $levelRewards = $this->learning->getLevelRewards();
+        $ownedItemIds = DB::table('student_purchases')->where('student_id', $studentId)->pluck('item_id')->map(fn ($v) => (int) $v)->all();
+        $nextReward = collect($levelRewards)->first(fn ($r) => $r['unlock_level'] > $level);
 
         $todayXp = (int) DB::table('xp_log')->where('student_id', $studentId)->where('amount', '>', 0)
             ->whereRaw('DATE(created_at) = CURDATE()')->sum('amount');
@@ -70,7 +76,12 @@ class LearningController extends Controller
             'flame_emoji' => $cosmetics['flame_emoji'] ?: '🔥',
             'xp_gained' => $xpGained,
             'xp_game' => $xpGame,
-            'level' => intdiv($totalXpEarned, $xpPerLevel) + 1,
+            'level' => $level,
+            'total_xp_earned' => $totalXpEarned,
+            'level_rewards' => $levelRewards,
+            'owned_item_ids' => $ownedItemIds,
+            'next_reward' => $nextReward,
+            'new_level_rewards' => $newLevelRewards,
             'xp_into_level' => $totalXpEarned % $xpPerLevel,
             'xp_to_next' => $xpPerLevel - ($totalXpEarned % $xpPerLevel),
             'level_progress_pct' => round((($totalXpEarned % $xpPerLevel) / $xpPerLevel) * 100),

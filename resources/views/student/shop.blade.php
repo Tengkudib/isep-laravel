@@ -25,6 +25,8 @@
         .border-preview { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; padding: 4px; }
         .border-preview .inner { width: 100%; height: 100%; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center; color: #13315C; font-weight: 700; }
         .owned-badge { position: absolute; top: 10px; right: 10px; }
+        .reward-badge { position: absolute; top: 10px; left: 10px; background: linear-gradient(135deg,#D4AF37,#F5D061); color: #0B2545; font-weight: 700; }
+        .shop-item.reward-item { border: 1px solid rgba(212,175,55,0.55); box-shadow: 0 0 0 3px rgba(212,175,55,0.12); padding-top: 42px !important; }
         .theme-swatch { display: flex; height: 40px; border-radius: var(--isep-r-lg); overflow: hidden; margin-bottom: 10px; }
         .theme-swatch span { flex: 1; }
         .confetti-preview { display: flex; gap: 4px; justify-content: center; margin-bottom: 10px; }
@@ -92,7 +94,8 @@
             $equipped = $is_equipable && $user[$equipped_column_map[$item['item_type']]] == $item['id'];
 @endphp
         <div class="col-md-3 col-6">
-            <div class="card-modern shop-item">
+            <div class="card-modern shop-item{{ $item['unlock_level'] !== null ? ' reward-item' : '' }}">
+                @if ($item['unlock_level'] !== null)<span class="badge reward-badge"><i class="fas fa-gift me-1"></i>{{ t('Ganjaran Level', 'Level Reward') }} {{ (int) $item['unlock_level'] }}</span>@endif
                 @if ($owned && $is_equipable)<span class="badge bg-success owned-badge">{{ t('Dimiliki', 'Owned') }}</span>@endif
 
                 @if ($item['item_type'] === 'border')
@@ -150,6 +153,8 @@
                         <input type="hidden" name="item_id" value="{!! $item['id'] !!}">
                         <button type="submit" name="buy_item" class="btn btn-primary btn-sm w-100" {!! $user['xp_points'] < $item['cost_xp'] ? 'disabled' : '' !!}>💎{!! $item['cost_xp'] !!} XP</button>
                     </form>
+
+                @elseif ($item['unlock_level'] !== null && !$owned)
 
                 @elseif (!$owned)
                     <form method="POST" action="{{ route('student.shop', ['tab' => $active_tab]) }}">

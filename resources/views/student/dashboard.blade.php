@@ -64,6 +64,35 @@
         @media (max-width: 480px) {
             .xp-toast { left: 16px; right: 16px; max-width: none; }
         }
+        .level-card { cursor: pointer; transition: transform .2s ease, box-shadow .2s ease; }
+        .level-card:hover, .level-card:focus-visible { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(19,49,92,0.15); outline: none; }
+        .level-card-cta { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 12px; background: rgba(212,175,55,0.12); border: 1px dashed rgba(212,175,55,0.6); }
+        .lr-gift-sm { font-size: 1.5rem; animation: lrWiggle 2.6s ease-in-out infinite; display: inline-block; }
+        @keyframes lrWiggle { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-12deg); } 90% { transform: rotate(10deg); } 95% { transform: rotate(-6deg); } }
+        .level-reward-toast { background: linear-gradient(135deg, #D4AF37, #F5D061) !important; color: #0B2545; animation: lrPop .5s cubic-bezier(.2,.9,.3,1.4) both; }
+        .level-reward-toast small { color: #0B2545; opacity: .85; }
+        .lr-gift { font-size: 2rem; animation: lrWiggle 1.8s ease-in-out infinite; }
+        @keyframes lrPop { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+        .lr-modal { border-radius: 18px; }
+        .lr-track { position: relative; display: flex; flex-direction: column; gap: 10px; }
+        .lr-item { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(107,122,143,0.2); background: rgba(107,122,143,0.04); }
+        .lr-item.unlocked { border-color: rgba(25,135,84,0.35); background: rgba(25,135,84,0.06); }
+        .lr-item.next { border: 2px solid #D4AF37; box-shadow: 0 0 0 4px rgba(212,175,55,0.15); }
+        .lr-level { width: 52px; flex-shrink: 0; text-align: center; font-weight: 800; color: var(--isep-primary); background: rgba(19,49,92,0.08); border-radius: 10px; padding: 6px 0; font-size: .85rem; }
+        .lr-preview { width: 56px; height: 56px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+        .lr-ring { width: 50px; height: 50px; border-radius: 50%; padding: 4px; }
+        .lr-ring span { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; background: linear-gradient(135deg,var(--isep-primary),var(--isep-secondary)); }
+        .lr-name { font-size: 1.6rem; font-weight: 800; }
+        .lr-emoji { font-size: 2rem; }
+        .lr-swatch { display: flex; border-radius: 10px; overflow: hidden; width: 50px; height: 34px; }
+        .lr-swatch span { flex: 1; }
+        .lr-confetti { display: flex; flex-wrap: wrap; gap: 4px; width: 46px; justify-content: center; }
+        .lr-confetti span { width: 10px; height: 10px; border-radius: 3px; transform: rotate(20deg); }
+        .lr-status { text-align: right; flex-shrink: 0; }
+        .min-w-0 { min-width: 0; }
+        [data-theme="dark"] .lr-level { color: #F5D061; background: rgba(255,255,255,0.06); }
+        [data-theme="dark"] .level-card-cta { background: rgba(212,175,55,0.08); }
+        @media (prefers-reduced-motion: reduce) { .lr-gift, .lr-gift-sm, .level-reward-toast { animation: none; } }
     </style>
 @endpush
 
@@ -111,8 +140,19 @@
 </div>
 
 <div class="container-fluid p-4">
+    @if ($new_level_rewards)
+    <div class="level-reward-toast card-modern p-3 mb-4 d-flex align-items-center gap-3" role="status">
+        <div class="lr-gift">🎁</div>
+        <div class="flex-grow-1">
+            <div class="fw-bold">{{ t('Ganjaran level baharu!', 'New level reward!') }}</div>
+            <small>{{ implode(', ', array_map(fn ($r) => $r['name'] . ' (Level ' . $r['unlock_level'] . ')', $new_level_rewards)) }}</small>
+        </div>
+        <a href="{{ route('student.shop') }}" class="btn btn-sm btn-light fw-semibold">{{ t('Pakai di Kedai XP', 'Equip in XP Shop') }}</a>
+    </div>
+    @endif
+
     <!-- Level Card -->
-    <div class="card-modern p-4 mb-4">
+    <div class="card-modern p-4 mb-4 level-card" role="button" tabindex="0" data-bs-toggle="modal" data-bs-target="#levelRewardsModal" title="{{ t('Lihat ganjaran level', 'View level rewards') }}">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div class="d-flex align-items-center gap-3">
                 <div style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--isep-primary),var(--isep-secondary));display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:1.3rem;">
@@ -129,8 +169,92 @@
                 </div>
                 <small class="text-muted">{!! $xp_into_level !!} / {!! $xp_per_level !!} XP</small>
             </div>
+            <div class="level-card-cta">
+                <span class="lr-gift-sm">🎁</span>
+                <div>
+                    <div class="fw-semibold small">{{ t('Ganjaran Level', 'Level Rewards') }}</div>
+                    <small class="text-muted">
+                        @if ($next_reward)
+                            {{ t('Seterusnya', 'Next') }}: {{ $next_reward['name'] }} · Lv {{ (int) $next_reward['unlock_level'] }}
+                        @else
+                            {{ t('Semua ganjaran diperoleh!', 'All rewards unlocked!') }}
+                        @endif
+                    </small>
+                </div>
+                <i class="fas fa-chevron-right text-muted"></i>
+            </div>
         </div>
     </div>
+
+    <div class="modal fade" id="levelRewardsModal" tabindex="-1" aria-labelledby="levelRewardsTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div class="modal-content lr-modal">
+                <div class="modal-header border-0 pb-0">
+                    <div>
+                        <h5 class="modal-title fw-bold" id="levelRewardsTitle">🎁 {{ t('Ganjaran Level', 'Level Rewards') }}</h5>
+                        <small class="text-muted">{{ t('Naik level untuk membuka ganjaran eksklusif. Ganjaran tidak boleh dibeli di Kedai XP.', 'Level up to unlock exclusive rewards. Rewards cannot be bought in the XP Shop.') }}</small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t('Tutup', 'Close') }}"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="lr-track">
+                        @foreach ($level_rewards as $r)
+                        @php
+                            $unlocked = $level >= (int) $r['unlock_level'];
+                            $owned_r = in_array((int) $r['id'], $owned_item_ids, true);
+                            $xp_needed = max(0, ((int) $r['unlock_level'] - 1) * $xp_per_level - $total_xp_earned);
+                            $type_label = [
+                                'title' => t('Gelaran', 'Title'), 'flame' => t('Api Streak', 'Streak Flame'), 'border' => t('Bingkai Profil', 'Profile Frame'),
+                                'name_effect' => t('Kesan Nama', 'Name Effect'), 'theme' => t('Tema', 'Theme'), 'celebration' => t('Sambutan', 'Celebration'),
+                            ][$r['item_type']] ?? $r['item_type'];
+                        @endphp
+                        <div class="lr-item {{ $unlocked ? 'unlocked' : 'locked' }}{{ $next_reward && $next_reward['id'] == $r['id'] ? ' next' : '' }}">
+                            <div class="lr-level">Lv {{ (int) $r['unlock_level'] }}</div>
+                            <div class="lr-preview">
+                                @if ($r['item_type'] === 'border')
+                                    <div class="lr-ring" style="background:{{ $r['border_style'] }};"><span>{{ strtoupper(substr($user['name'], 0, 1)) }}</span></div>
+                                @elseif ($r['item_type'] === 'name_effect')
+                                    <span class="lr-name {{ $r['extra_data'] }}">Aa</span>
+                                @elseif ($r['item_type'] === 'theme')
+                                    <div class="lr-swatch">@foreach (explode(',', $r['extra_data']) as $c)<span style="background:{{ $c }};"></span>@endforeach</div>
+                                @elseif ($r['item_type'] === 'celebration')
+                                    <div class="lr-confetti">@foreach (array_slice(explode(',', $r['extra_data']), 0, 5) as $c)<span style="background:{{ $c }};"></span>@endforeach</div>
+                                @elseif ($r['item_type'] === 'flame')
+                                    <span class="lr-emoji">{{ $r['extra_data'] }}</span>
+                                @else
+                                    <span class="lr-emoji">{{ $r['icon'] }}</span>
+                                @endif
+                            </div>
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="fw-bold">{{ $r['name'] }}</div>
+                                <small class="text-muted">{{ $type_label }}{{ $r['item_type'] === 'title' ? ' · "' . $r['extra_data'] . '"' : '' }}</small>
+                            </div>
+                            <div class="lr-status">
+                                @if ($unlocked && $owned_r)
+                                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>{{ t('Diperoleh', 'Unlocked') }}</span>
+                                @else
+                                    <span class="badge bg-secondary"><i class="fas fa-lock me-1"></i>Level {{ (int) $r['unlock_level'] }}</span>
+                                    <div class="small text-muted mt-1">{{ $xp_needed }} XP {{ t('lagi', 'to go') }}</div>
+                                @endif
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <a href="{{ route('student.shop') }}" class="btn btn-primary"><i class="fas fa-store me-1"></i>{{ t('Pakai di Kedai XP', 'Equip in XP Shop') }}</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.querySelectorAll('.level-card').forEach(function (card) {
+        card.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
+        });
+    });
+    </script>
 
 
     <!-- Continue Learning -->

@@ -322,6 +322,25 @@ class SystemTest extends TestCase
         $page->assertSee('<div class="name"><span class="name-fx-shimmer">', false);
     }
 
+    public function test_level_rewards_are_granted_and_cannot_be_bought(): void
+    {
+        $id = DB::table('users')->insertGetId(['name' => 'UJIAN LEVEL', 'username' => 'UJIAN LEVEL '.uniqid(), 'password' => Hash::make('secret123'), 'role' => 'student', 'status' => 'active']);
+        DB::table('xp_log')->insert(['student_id' => $id, 'amount' => 1000, 'reason' => 'ujian']);
+        DB::table('users')->where('id', $id)->update(['xp_points' => 5000]);
+
+        $page = $this->as($id)->get('/student/dashboard')->assertOk();
+        $page->assertSee('Ganjaran level baharu!')->assertSee('id="levelRewardsModal"', false)->assertSee('Pelajar Rajin');
+        $owned = DB::table('student_purchases as sp')->join('shop_items as si', 'si.id', '=', 'sp.item_id')
+            ->where('sp.student_id', $id)->whereNotNull('si.unlock_level')->pluck('si.unlock_level')->map(fn ($v) => (int) $v)->sort()->values()->all();
+        $this->assertSame([2, 3], $owned);
+        $this->as($id)->get('/student/dashboard')->assertDontSee('Ganjaran level baharu!');
+
+        $lockedReward = DB::table('shop_items')->where('unlock_level', 5)->value('id');
+        $this->as($id)->post('/student/shop', ['buy_item' => 1, 'item_id' => $lockedReward])->assertSessionHas('message_type', 'danger');
+        $this->assertSame(5000, $this->xp($id));
+        $this->as($id)->get('/student/shop?tab=border')->assertSee('Ganjaran Level 5');
+    }
+
     public function test_only_one_xp_booster_can_be_active(): void
     {
         $this->as(self::STUDENT);
