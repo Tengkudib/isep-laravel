@@ -116,11 +116,6 @@
                 <i class="fas fa-sign-in-alt me-2"></i>{{ t('Log Masuk', 'Log In') }}
             </button>
         </form>
-
-        <p class="text-center text-muted small mt-4 mb-0">
-            Demo: ADMIN ISEP / admin123<br>
-            Demo: ALI AHMAD / admin123
-        </p>
     </div>
     <script src="{{ asset('assets/theme-toggle.js') }}?v=3"></script>
 @endsection
