@@ -1,0 +1,40 @@
+body { background: #FAF7F0; font-family: 'Segoe UI', sans-serif; }
+.topbar { color: white; padding: 24px 32px; border-radius: 0 0 var(--isep-r-xl) var(--isep-r-xl); }
+.card-modern { border: none; border-radius: var(--isep-r-xl); box-shadow: var(--isep-shadow-md); }
+.mode-btn { border-radius: var(--isep-r-xl); padding: 28px 20px; text-align: center; cursor: pointer; transition: all var(--isep-duration) var(--isep-ease); border: 2px solid transparent; background: var(--isep-card-bg); height: 100%; }
+.mode-btn:hover, .mode-btn:focus-visible { border-color: var(--isep-primary); transform: translateY(-3px); outline: none; }
+.mode-btn i { font-size: 2rem; margin-bottom: 10px; color: var(--isep-secondary); }
+.diff-btn { border-radius: var(--isep-r-lg); padding: 14px; font-weight: 700; }
+.lobby-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: var(--isep-r-lg); background: var(--isep-bg); margin-bottom: 8px; }
+.turn-pill { padding: 8px 16px; border-radius: var(--isep-r-xl); font-weight: 700; font-size: 0.85rem; }
+.waiting-spinner { width: 46px; height: 46px; border: 5px solid #eee; border-top-color: var(--isep-primary); border-radius: 50%; animation: geSpin 0.8s linear infinite; margin: 0 auto; }
+@keyframes geSpin { to { transform: rotate(360deg); } }
+
+.result-overlay { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center; background: rgba(10, 10, 20, 0); padding: 20px; pointer-events: none; transition: background 0.25s ease; }
+.result-overlay.show { background: rgba(10, 10, 20, 0.55); pointer-events: auto; }
+.result-card { width: 100%; max-width: 400px; text-align: center; padding: 34px 28px; border-radius: var(--isep-r-xl); background: var(--isep-card-bg, #fff); box-shadow: var(--isep-shadow-xl); transform: scale(0.75) translateY(20px); opacity: 0; transition: transform 0.35s cubic-bezier(.34,1.56,.64,1), opacity 0.25s ease; }
+.result-overlay.show .result-card { transform: scale(1) translateY(0); opacity: 1; }
+.result-icon { width: 88px; height: 88px; margin: 0 auto 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.6rem; color: white; box-shadow: var(--isep-shadow-md); }
+.result-card.win .result-icon { background: linear-gradient(135deg, #D4AF37, #B8941F); animation: gePop 0.6s ease; }
+.result-card.lose .result-icon { background: linear-gradient(135deg, #6c757d, #343a40); }
+.result-card.draw .result-icon { background: linear-gradient(135deg, #13315C, #D4AF37); }
+@keyframes gePop { 0% { transform: scale(0); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+.result-title { font-weight: 800; font-size: 1.5rem; margin-bottom: 6px; }
+.result-card.win .result-title { color: #d97706; }
+.result-card.draw .result-title { color: var(--isep-primary); }
+.result-sub { color: var(--isep-text-muted, #6c757d); font-size: 0.9rem; margin-bottom: 18px; }
+.result-xp-badge { display: inline-block; background: linear-gradient(135deg, #D4AF3733, #B8941F33); color: #8a6d00; font-weight: 700; padding: 8px 18px; border-radius: var(--isep-r-xl); margin-bottom: 22px; font-size: 0.95rem; }
+.result-actions { display: flex; gap: 10px; }
+.result-actions .btn { border-radius: var(--isep-r-lg); font-weight: 600; }
+
+.question-card { max-width: 480px; text-align: left; }
+.question-badge { display: inline-block; font-weight: 700; font-size: 0.8rem; padding: 4px 12px; border-radius: 999px; margin-bottom: 10px; background: rgba(212,175,55,0.18); color: #8a6d00; }
+.question-text { font-size: 1rem; }
+.question-option { text-align: left; border-radius: var(--isep-r-lg); font-weight: 600; padding: 10px 14px; }
+.question-option.correct { background: #198754 !important; border-color: #198754 !important; color: white !important; }
+.question-option.wrong { background: #dc3545 !important; border-color: #dc3545 !important; color: white !important; }
+.question-feedback { font-weight: 700; min-height: 1.4em; }
+
+[data-theme="dark"] .result-xp-badge { color: #F5D061; }
+[data-theme="dark"] .question-badge { color: #F5D061; }
+@media (prefers-reduced-motion: reduce) { .result-card, .waiting-spinner { transition: none; animation: none; } }

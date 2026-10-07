@@ -56,6 +56,8 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
     Route::get('/games', [GameController::class, 'index'])->name('games');
     Route::get('/games/chess', [GameController::class, 'chess'])->name('chess');
     Route::get('/games/dam', [GameController::class, 'dam'])->name('dam');
+    Route::get('/games/quizrush', [GameController::class, 'quizrush'])->name('quizrush');
+    Route::get('/games/{game}', [GameController::class, 'boardGame'])->whereIn('game', ['tictactoe', 'connect4', 'snakes'])->name('boardgame');
     Route::match(['get', 'post'], '/games/api', [GameController::class, 'api'])->name('games.api');
 
     Route::get('/report', [ReportController::class, 'show'])->name('report');

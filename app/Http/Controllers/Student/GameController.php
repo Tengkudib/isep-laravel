@@ -17,13 +17,27 @@ use Illuminate\Support\Facades\DB;
  */
 class GameController extends Controller
 {
-    private const AI_XP = ['easy' => 15, 'medium' => 30, 'hard' => 50];
+    private const BOARD_GAMES = ['chess', 'dam', 'tictactoe', 'connect4', 'snakes'];
 
-    // Tempoh minimum (saat) perlawanan vs komputer sebelum kemenangan layak XP
-    private const AI_MIN_SECONDS = 60;
+    private const GAME_XP = [
+        'chess' => ['easy' => 15, 'medium' => 30, 'hard' => 50],
+        'dam' => ['easy' => 15, 'medium' => 30, 'hard' => 50],
+        'tictactoe' => ['easy' => 5, 'medium' => 10, 'hard' => 15],
+        'connect4' => ['easy' => 10, 'medium' => 20, 'hard' => 30],
+        'snakes' => ['easy' => 10, 'medium' => 15, 'hard' => 20],
+    ];
 
-    // Bilangan kemenangan vs komputer yang diberi XP setiap hari
-    private const AI_XP_WINS_PER_DAY = 5;
+    private const GAME_LABELS = ['chess' => 'Chess', 'dam' => 'Dam Haji', 'tictactoe' => 'Tic-Tac-Toe', 'connect4' => 'Connect Four', 'snakes' => 'Ular & Tangga'];
+
+    private const QUIZRUSH_SECONDS = 60;
+
+    private const QUIZRUSH_QUESTIONS = 40;
+
+    private const QUIZRUSH_XP_PER_CORRECT = 2;
+
+    private const QUIZRUSH_MAX_XP = 30;
+
+    private const QUIZRUSH_RUNS_PER_DAY = 1;
 
     // PvP: pemain dianggap sudah keluar jika pelayarnya tidak poll selama tempoh ini (saat).
     // Cukup panjang untuk tab latar belakang yang di-throttle oleh pelayar (sehingga ~1 minit).
@@ -42,12 +56,66 @@ class GameController extends Controller
 
     public function chess(Request $request)
     {
-        return view('student.chess', ['student_id' => (int) $request->user()->id]);
+        return view('student.chess', ['student_id' => (int) $request->user()->id, 'xp_today' => $this->learning->gameXpDifficultiesToday((int) $request->user()->id, 'chess')]);
     }
 
     public function dam(Request $request)
     {
-        return view('student.dam', ['student_id' => (int) $request->user()->id]);
+        return view('student.dam', ['student_id' => (int) $request->user()->id, 'xp_today' => $this->learning->gameXpDifficultiesToday((int) $request->user()->id, 'dam')]);
+    }
+
+    public function boardGame(Request $request, string $game)
+    {
+        abort_unless(in_array($game, ['tictactoe', 'connect4', 'snakes'], true), 404);
+
+        return view('student.games.'.$game, [
+            'xp_today' => $this->learning->gameXpDifficultiesToday((int) $request->user()->id, $game),
+        ]);
+    }
+
+    public function quizrush()
+    {
+        return view('student.games.quizrush');
+    }
+
+    private function initialBoardState(string $gameType): string
+    {
+        return match ($gameType) {
+            'chess' => self::CHESS_START_FEN,
+            'dam' => $this->damInitialBoard(),
+            'tictactoe' => '.........',
+            'connect4' => str_repeat('0', 42),
+            'snakes' => json_encode(['pos' => [0, 0], 'roll' => 0, 'event' => '']),
+            default => '',
+        };
+    }
+
+    private function quizQuestionPool(int $limit): array
+    {
+        return rows(DB::table('quizzes')->select('id', 'question', 'question_type', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer')
+            ->whereIn('question_type', ['multiple_choice', 'true_false'])->inRandomOrder()->limit($limit));
+    }
+
+    private function quizOptions(array $q): array
+    {
+        if ($q['question_type'] === 'true_false') {
+            return ['True', 'False'];
+        }
+        $opts = array_values(array_filter([$q['option_a'], $q['option_b'], $q['option_c'], $q['option_d']], fn ($o) => $o !== null && $o !== ''));
+        shuffle($opts);
+
+        return $opts;
+    }
+
+    private function quizBestScore(int $studentId): int
+    {
+        return (int) DB::table('game_matches')->where('player1_id', $studentId)->where('game_type', 'quizrush')->where('status', 'finished')
+            ->max(DB::raw("CAST(JSON_UNQUOTE(JSON_EXTRACT(board_state, '$.score')) AS UNSIGNED)"));
+    }
+
+    private function quizRunsToday(int $studentId): int
+    {
+        return DB::table('game_matches')->where('player1_id', $studentId)->where('game_type', 'quizrush')->whereRaw('DATE(created_at) = CURDATE()')->count();
     }
 
     private function respond(array $data, int $code = 200): JsonResponse
@@ -144,7 +212,7 @@ class GameController extends Controller
         // ---------------- GET ----------------
         if ($action === 'lobby') {
             $gameType = $request->query('game_type', '');
-            if (! in_array($gameType, ['chess', 'dam'], true)) {
+            if (! in_array($gameType, self::BOARD_GAMES, true)) {
                 return $this->respond(['error' => 'Jenis permainan tidak sah.'], 400);
             }
             $rows = [];
@@ -172,6 +240,22 @@ class GameController extends Controller
             return $this->respond(['match' => $row]);
         }
 
+        if ($action === 'question') {
+            $q = $this->quizQuestionPool(1)[0] ?? null;
+            if (! $q) {
+                return $this->respond(['error' => 'Tiada soalan.'], 404);
+            }
+
+            return $this->respond(['question' => ['text' => $q['question'], 'options' => $this->quizOptions($q), 'answer' => $q['correct_answer']]]);
+        }
+
+        if ($action === 'quiz_stats') {
+            return $this->respond([
+                'best' => $this->quizBestScore($studentId),
+                'runs_left' => max(0, self::QUIZRUSH_RUNS_PER_DAY - $this->quizRunsToday($studentId)),
+            ]);
+        }
+
         if ($action === 'state') {
             $m = $this->getMatch((int) $request->query('match_id', 0));
             if (! $m) {
@@ -195,7 +279,7 @@ class GameController extends Controller
                 $mode = $request->input('mode', '');
                 $aiDifficulty = $request->input('ai_difficulty');
 
-                if (! in_array($gameType, ['chess', 'dam'], true)) {
+                if (! in_array($gameType, self::BOARD_GAMES, true)) {
                     return $this->respond(['error' => 'Jenis permainan tidak sah.'], 400);
                 }
                 if (! in_array($mode, ['ai', 'pvp'], true)) {
@@ -214,13 +298,79 @@ class GameController extends Controller
                     'ai_difficulty' => $aiDifficulty,
                     'player1_id' => $studentId,
                     'status' => $mode === 'ai' ? 'ongoing' : 'waiting',
-                    'board_state' => $gameType === 'chess' ? self::CHESS_START_FEN : $this->damInitialBoard(),
+                    'board_state' => $this->initialBoardState($gameType),
                     'turn' => 'player1',
                     'last_move_at' => DB::raw('NOW()'),
                 ]);
                 $this->touchPresence($newId, $studentId);
 
                 return $this->respond(['match' => $this->matchView($this->getMatch($newId), $studentId)]);
+            }
+
+            if ($action === 'quiz_start') {
+                if ($this->quizRunsToday($studentId) >= self::QUIZRUSH_RUNS_PER_DAY) {
+                    return $this->respond(['error' => t('Anda sudah bermain Kuiz Koding Pantas hari ini. Datang semula esok!', 'You have already played the Quick Code Quiz today. Come back tomorrow!')], 429);
+                }
+                $questions = $this->quizQuestionPool(self::QUIZRUSH_QUESTIONS);
+                if (! $questions) {
+                    return $this->respond(['error' => 'Tiada soalan kuiz.'], 404);
+                }
+                $newId = DB::table('game_matches')->insertGetId([
+                    'game_type' => 'quizrush', 'mode' => 'ai', 'ai_difficulty' => null, 'player1_id' => $studentId, 'status' => 'ongoing',
+                    'board_state' => json_encode(['q' => array_map(fn ($q) => (int) $q['id'], $questions), 'score' => 0]),
+                    'turn' => 'player1', 'last_move_at' => DB::raw('NOW()'),
+                ]);
+
+                return $this->respond(['match_id' => $newId, 'seconds' => self::QUIZRUSH_SECONDS, 'questions' => array_map(fn ($q) => [
+                    'id' => (int) $q['id'], 'text' => $q['question'], 'options' => $this->quizOptions($q),
+                ], $questions)]);
+            }
+
+            if ($action === 'quiz_finish') {
+                $answers = json_decode((string) $request->input('answers', '{}'), true);
+                $answers = is_array($answers) ? $answers : [];
+                $m = $this->getMatch($matchId);
+                if (! $m || $m['game_type'] !== 'quizrush' || (int) $m['player1_id'] !== $studentId) {
+                    return $this->respond(['error' => 'Perlawanan tidak dijumpai.'], 404);
+                }
+                if ($m['status'] !== 'ongoing') {
+                    return $this->respond(['error' => 'Kuiz sudah tamat.'], 409);
+                }
+
+                $state = json_decode($m['board_state'], true);
+                $ids = array_map('intval', $state['q'] ?? []);
+                $elapsed = (int) DB::table('game_matches')->where('id', $matchId)->value(DB::raw('TIMESTAMPDIFF(SECOND, created_at, NOW())'));
+                $byId = collect(rows(DB::table('quizzes')->select('id', 'question', 'correct_answer')->whereIn('id', $ids ?: [0])))->keyBy('id');
+
+                $review = [];
+                $score = 0;
+                foreach ($answers as $qid => $given) {
+                    $qid = (int) $qid;
+                    if (! in_array($qid, $ids, true) || ! $byId->has($qid)) {
+                        continue;
+                    }
+                    $ok = trim((string) $given) === trim($byId[$qid]['correct_answer']);
+                    $score += $ok ? 1 : 0;
+                    $review[] = ['question' => $byId[$qid]['question'], 'given' => (string) $given, 'correct' => $byId[$qid]['correct_answer'], 'ok' => $ok];
+                }
+
+                $state['score'] = $score;
+                $state['answered'] = count($review);
+                DB::table('game_matches')->where('id', $matchId)->update([
+                    'status' => 'finished', 'winner' => 'player1', 'board_state' => json_encode($state), 'move_count' => count($review),
+                ]);
+
+                $xpMessage = null;
+                $xp = min($score * self::QUIZRUSH_XP_PER_CORRECT, self::QUIZRUSH_MAX_XP);
+                if ($elapsed > self::QUIZRUSH_SECONDS + 15) {
+                    $xpMessage = t('(Masa tamat terlalu lama - tiada XP.)', '(Time ran out too long ago - no XP.)');
+                } elseif ($xp > 0) {
+                    $this->learning->addXp($studentId, $xp, "Kuiz Koding Pantas - $score betul");
+                    DB::table('game_matches')->where('id', $matchId)->update(['xp_awarded' => 1]);
+                    $xpMessage = "+$xp XP!";
+                }
+
+                return $this->respond(['score' => $score, 'answered' => count($review), 'best' => $this->quizBestScore($studentId), 'xp_message' => $xpMessage, 'review' => $review]);
             }
 
             if ($action === 'join') {
@@ -330,6 +480,9 @@ class GameController extends Controller
                 if ($m['status'] === 'finished') {
                     return $this->respond(['match' => $this->matchView($m, $studentId)]); // idempotent
                 }
+                if ($m['game_type'] === 'quizrush') {
+                    return $this->respond(['error' => 'Tindakan tidak sah.'], 400);
+                }
 
                 DB::table('game_matches')->where('id', $matchId)->update(['status' => 'finished', 'winner' => $winner]);
 
@@ -339,22 +492,20 @@ class GameController extends Controller
                 if ($m['mode'] === 'ai' && $winner === 'player1') {
                     // Permainan vs komputer berjalan di pelayar, jadi pelayan tidak nampak langkahnya.
                     // Halang "menang" palsu: perlawanan mesti berlangsung cukup lama, dan XP dihadkan setiap hari.
-                    $elapsed = (int) DB::table('game_matches')->where('id', $matchId)->value(DB::raw('TIMESTAMPDIFF(SECOND, created_at, NOW())'));
-                    $xpWinsToday = DB::table('game_matches')->where('player1_id', $studentId)->where('mode', 'ai')
-                        ->where('xp_awarded', 1)->whereRaw('DATE(created_at) = CURDATE()')->count();
-                    $eligible = $elapsed >= self::AI_MIN_SECONDS && $xpWinsToday < self::AI_XP_WINS_PER_DAY;
+                    $alreadyToday = in_array($m['ai_difficulty'] ?: 'easy', $this->learning->gameXpDifficultiesToday($studentId, $m['game_type']), true);
+                    $eligible = ! $alreadyToday;
 
                     if (! $m['xp_awarded'] && $eligible) {
                         $difficulty = $m['ai_difficulty'] ?: 'easy';
-                        $xp = self::AI_XP[$difficulty] ?? 15;
-                        $gameLabel = $m['game_type'] === 'chess' ? 'Chess' : 'Dam Haji';
+                        $xp = self::GAME_XP[$m['game_type']][$difficulty] ?? 10;
+                        $gameLabel = self::GAME_LABELS[$m['game_type']] ?? $m['game_type'];
                         $diffLabel = ['easy' => 'Mudah', 'medium' => 'Sederhana', 'hard' => 'Sukar'][$difficulty];
                         $this->learning->addXp($studentId, $xp, "$gameLabel vs Komputer ($diffLabel) - Menang");
 
                         DB::table('game_matches')->where('id', $matchId)->update(['xp_awarded' => 1]);
                         $xpMessage = "+$xp XP!";
-                    } elseif (! $m['xp_awarded'] && $xpWinsToday >= self::AI_XP_WINS_PER_DAY) {
-                        $xpMessage = t('(Had XP permainan hari ini telah dicapai.)', '(Today\'s game XP limit has been reached.)');
+                    } elseif (! $m['xp_awarded'] && $alreadyToday) {
+                        $xpMessage = t('(XP untuk tahap ini sudah diperoleh hari ini - cuba tahap lain atau datang semula esok.)', '(XP for this level was already earned today - try another level or come back tomorrow.)');
                     }
 
                     $freshUser = row(DB::table('users')->where('id', $studentId));

@@ -154,6 +154,12 @@ class LearningService
         return max(0, $level - 1) * self::XP_PER_LEVEL;
     }
 
+    public function gameXpDifficultiesToday(int $studentId, string $gameType): array
+    {
+        return DB::table('game_matches')->where('player1_id', $studentId)->where('game_type', $gameType)->where('mode', 'ai')
+            ->where('xp_awarded', 1)->whereRaw('DATE(created_at) = CURDATE()')->distinct()->pluck('ai_difficulty')->all();
+    }
+
     public function getLevelRewards(): array
     {
         return rows(DB::table('shop_items')->whereNotNull('unlock_level')->orderBy('unlock_level')->orderBy('sort_order')->orderBy('id'));

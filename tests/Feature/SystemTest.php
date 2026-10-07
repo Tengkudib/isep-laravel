@@ -722,30 +722,69 @@ class SystemTest extends TestCase
         $this->post('/login', ['username' => 'ALI AHMAD', 'password' => 'secret123'])->assertRedirect('/student/dashboard');
     }
 
-    public function test_security_game_xp_requires_actually_playing(): void
-    {
-        $this->as(self::STUDENT);
-        $before = $this->xp(self::STUDENT);
-        $id = $this->postJson('/student/games/api', ['action' => 'create', 'game_type' => 'chess', 'mode' => 'ai', 'ai_difficulty' => 'hard'])->json('match.match_id');
-        $this->postJson('/student/games/api', ['action' => 'finish', 'match_id' => $id, 'winner' => 'player1']);
-        $this->assertSame($before, $this->xp(self::STUDENT), 'XP diberi untuk "menang" perlawanan tanpa satu langkah pun');
-    }
-
-    public function test_real_game_win_gives_xp_up_to_daily_limit(): void
+    public function test_game_xp_is_given_once_a_day_for_each_difficulty(): void
     {
         $this->as(self::STUDENT);
         DB::table('game_matches')->where('player1_id', self::STUDENT)->where('mode', 'ai')->whereRaw('DATE(created_at) = CURDATE()')->delete();
+        DB::table('users')->where('id', self::STUDENT)->update(['xp_booster_until' => null]);
 
-        $gained = [];
-        for ($i = 0; $i < 6; $i++) {
-            $id = $this->postJson('/student/games/api', ['action' => 'create', 'game_type' => 'dam', 'mode' => 'ai', 'ai_difficulty' => 'easy'])->json('match.match_id');
-            // Seolah-olah permainan berlangsung 2 minit
-            DB::table('game_matches')->where('id', $id)->update(['created_at' => DB::raw('NOW() - INTERVAL 2 MINUTE')]);
+        $win = function (string $game, string $diff) {
+            $id = $this->postJson('/student/games/api', ['action' => 'create', 'game_type' => $game, 'mode' => 'ai', 'ai_difficulty' => $diff])->json('match.match_id');
             $before = $this->xp(self::STUDENT);
-            $this->postJson('/student/games/api', ['action' => 'finish', 'match_id' => $id, 'winner' => 'player1'])->assertOk();
-            $gained[] = $this->xp(self::STUDENT) - $before;
+            $res = $this->postJson('/student/games/api', ['action' => 'finish', 'match_id' => $id, 'winner' => 'player1'])->assertOk();
+
+            return [$this->xp(self::STUDENT) - $before, $res->json('xp_message')];
+        };
+
+        $this->assertSame(15, $win('chess', 'easy')[0]);
+        [$again, $message] = $win('chess', 'easy');
+        $this->assertSame(0, $again);
+        $this->assertStringContainsString('sudah diperoleh hari ini', $message);
+        $this->assertSame(30, $win('chess', 'medium')[0]);
+        $this->assertSame(5, $win('tictactoe', 'easy')[0]);
+        $this->assertSame(30, $win('connect4', 'hard')[0]);
+        $this->assertSame(15, $win('snakes', 'medium')[0]);
+        $this->get('/student/games/chess')->assertSee('XP hari ini');
+    }
+
+    public function test_new_board_games_start_with_the_right_board(): void
+    {
+        $this->as(self::STUDENT);
+        $expected = ['tictactoe' => '.........', 'connect4' => str_repeat('0', 42)];
+        foreach ($expected as $game => $board) {
+            $this->postJson('/student/games/api', ['action' => 'create', 'game_type' => $game, 'mode' => 'pvp'])->assertJsonPath('match.board_state', $board);
+            $this->get('/student/games/'.$game)->assertOk()->assertSee('game-engine.js', false);
         }
-        $this->assertSame([15, 15, 15, 15, 15, 0], $gained);
+        $snakes = json_decode($this->postJson('/student/games/api', ['action' => 'create', 'game_type' => 'snakes', 'mode' => 'ai', 'ai_difficulty' => 'easy'])->json('match.board_state'), true);
+        $this->assertSame([0, 0], $snakes['pos']);
+        $this->getJson('/student/games/api?action=question')->assertJsonStructure(['question' => ['text', 'options', 'answer']]);
+        $this->postJson('/student/games/api', ['action' => 'create', 'game_type' => 'poker', 'mode' => 'pvp'])->assertStatus(400);
+    }
+
+    public function test_quick_code_quiz_is_scored_on_the_server_once_a_day(): void
+    {
+        $this->as(self::STUDENT);
+        DB::table('game_matches')->where('player1_id', self::STUDENT)->where('game_type', 'quizrush')->delete();
+        DB::table('users')->where('id', self::STUDENT)->update(['xp_booster_until' => null]);
+
+        $start = $this->postJson('/student/games/api', ['action' => 'quiz_start'])->assertOk();
+        $this->assertStringNotContainsString('correct_answer', $start->getContent());
+        $questions = $start->json('questions');
+        $answers = [];
+        foreach (array_slice($questions, 0, 5) as $q) {
+            $answers[$q['id']] = DB::table('quizzes')->where('id', $q['id'])->value('correct_answer');
+        }
+        $answers[$questions[5]['id']] = 'jawapan salah';
+
+        $this->postJson('/student/games/api', ['action' => 'finish', 'match_id' => $start->json('match_id'), 'winner' => 'player1'])->assertStatus(400);
+
+        $before = $this->xp(self::STUDENT);
+        $this->postJson('/student/games/api', ['action' => 'quiz_finish', 'match_id' => $start->json('match_id'), 'answers' => json_encode($answers)])
+            ->assertOk()->assertJsonPath('score', 5)->assertJsonPath('answered', 6);
+        $this->assertSame($before + 10, $this->xp(self::STUDENT));
+
+        $this->postJson('/student/games/api', ['action' => 'quiz_start'])->assertStatus(429);
+        $this->getJson('/student/games/api?action=quiz_stats')->assertJsonPath('runs_left', 0);
     }
 
     public function test_security_chatbot_is_rate_limited(): void

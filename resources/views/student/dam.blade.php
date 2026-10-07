@@ -105,9 +105,9 @@
         <div id="aiDifficultyPanel" class="card-modern p-4 mt-3" style="display:none;">
             <h6 class="fw-bold mb-3"><i class="fas fa-robot me-2"></i>{{ t('Pilih Tahap Kesukaran', 'Choose a Difficulty Level') }}</h6>
             <div class="row g-2">
-                <div class="col-4"><button class="btn btn-outline-success diff-btn w-100" onclick="startAiGame('easy')">{{ t('Mudah', 'Easy') }}<br><small class="fw-normal">+15 XP</small></button></div>
-                <div class="col-4"><button class="btn btn-outline-warning diff-btn w-100" onclick="startAiGame('medium')">{{ t('Sederhana', 'Medium') }}<br><small class="fw-normal">+30 XP</small></button></div>
-                <div class="col-4"><button class="btn btn-outline-danger diff-btn w-100" onclick="startAiGame('hard')">{{ t('Sukar', 'Hard') }}<br><small class="fw-normal">+50 XP</small></button></div>
+                <div class="col-4"><button class="btn btn-outline-success diff-btn w-100" onclick="startAiGame('easy')" data-diff="easy">{{ t('Mudah', 'Easy') }}<br>@if (in_array('easy', $xp_today, true))<small class="fw-normal"><i class="fas fa-check me-1"></i>{{ t('XP hari ini', 'XP today') }}</small>@else<small class="fw-normal">+15 XP</small>@endif</button></div>
+                <div class="col-4"><button class="btn btn-outline-warning diff-btn w-100" onclick="startAiGame('medium')" data-diff="medium">{{ t('Sederhana', 'Medium') }}<br>@if (in_array('medium', $xp_today, true))<small class="fw-normal"><i class="fas fa-check me-1"></i>{{ t('XP hari ini', 'XP today') }}</small>@else<small class="fw-normal">+30 XP</small>@endif</button></div>
+                <div class="col-4"><button class="btn btn-outline-danger diff-btn w-100" onclick="startAiGame('hard')" data-diff="hard">{{ t('Sukar', 'Hard') }}<br>@if (in_array('hard', $xp_today, true))<small class="fw-normal"><i class="fas fa-check me-1"></i>{{ t('XP hari ini', 'XP today') }}</small>@else<small class="fw-normal">+50 XP</small>@endif</button></div>
             </div>
             <button class="btn btn-link btn-sm mt-2 text-muted" onclick="backToModeChoice()">&larr; {{ t('Kembali', 'Back') }}</button>
         </div>
